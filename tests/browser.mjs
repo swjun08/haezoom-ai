@@ -44,7 +44,7 @@ try {
   assert.equal(await draftPage.evaluate(async () => (await chrome.storage.session.get('pendingSelection')).pendingSelection), undefined);
   const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await popup.setViewportSize({ width: 390, height: 780 });
-  await popup.screenshot({ path: resolve(output, '04-popup.png'), fullPage: true });
+  await popup.locator('body').screenshot({ path: resolve(output, '04-popup.png') });
   const selectionPage = await context.newPage();
   await selectionPage.route('https://school.example/**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="ko"><meta charset="utf-8"><title>학교 공지</title><body style="font:20px sans-serif;padding:80px;line-height:2"><h1>현장체험학습 안내</h1><p id="notice">2026년 11월 12일까지 참가 신청서를 담임 선생님께 제출해 주세요. 참가비는 15,000원입니다.</p><textarea aria-label="입력창">비공개 입력 중인 내용</textarea></body></html>' }));
   await selectionPage.goto('https://school.example/notice');
@@ -121,13 +121,26 @@ try {
   await selectionPage.keyboard.press('Escape');
   assert.equal(await buttonByName('내 할 일 둘러보기 ↗'), undefined);
   await clickClosedButton('해줌 도우미 열기');
+  await selectionPage.evaluate(() => { globalThis.healthySend = chrome.runtime.sendMessage; chrome.runtime.sendMessage = async () => { throw new Error('Extension context invalidated.'); }; });
+  await clickClosedButton('화면 캡쳐하기 ▣');
+  assert.ok(await buttonByName('새로고침하고 다시 사용'));
+  const expiredTree = (await cdp.send('Accessibility.getFullAXTree')).nodes;
+  assert.ok(expiredTree.some(node => node.name?.value?.includes('해줌이 업데이트되었어요.')));
+  assert.ok(!expiredTree.some(node => node.name?.value?.includes('Extension context invalidated')));
+  await selectionPage.evaluate(() => { chrome.runtime.sendMessage = healthySend; });
+  await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'selection-helper.js'), 'utf8') });
+  assert.equal(await launcherHost.count(), 1);
   await clickClosedButton('이 페이지에서 버튼 숨기기');
   assert.equal(await selectionPage.locator('[data-haezoom-launcher]').isVisible(), false);
   const frame = 'data:image/png;base64,' + (await selectionPage.screenshot()).toString('base64');
-  await selectionPage.evaluate(frame => {
+  const token = crypto.randomUUID();
+  const croppedFixture = 'data:image/png;base64,' + (await selectionPage.screenshot({ clip: { x: 200, y: 200, width: 500, height: 250 } })).toString('base64');
+  await page.evaluate(async ({ token, frame }) => chrome.storage.session.set({ [`capture-${token}`]: { image: frame, created: Date.now(), source: { title: '테스트' } } }), { token, frame: croppedFixture });
+  await selectionPage.evaluate(({ frame, extensionId, token }) => {
     globalThis.captureMessages = [];
-    chrome.runtime.sendMessage = async message => { globalThis.captureMessages.push(message); return message.type === 'captureViewport' ? { ok: true, data: frame } : { ok: true }; };
-  }, frame);
+    chrome.runtime.getURL = path => `chrome-extension://${extensionId}/${path}`;
+    chrome.runtime.sendMessage = async message => { globalThis.captureMessages.push(message); return message.type === 'captureViewport' ? { ok: true, data: frame } : { ok: true, data: `chrome-extension://${extensionId}/capture-review.html#${token}` }; };
+  }, { frame, extensionId, token });
   await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'capture.js'), 'utf8') });
   await selectionPage.evaluate(() => globalThis.__haezoomStartCapture());
   assert.equal(await selectionPage.locator('[data-haezoom-capture]').isVisible(), true);
@@ -137,7 +150,15 @@ try {
   await selectionPage.screenshot({ path: resolve(output, '08-capture-preview.png'), fullPage: true });
   assert.equal(await selectionPage.evaluate(() => captureMessages.filter(message => message.type === 'captureResult').length), 0);
   await clickClosedButton('이 캡쳐 가져오기');
-  assert.equal(await selectionPage.locator('[data-haezoom-capture]').count(), 0);
+  let review;
+  for (let attempt = 0; attempt < 50 && !review; attempt++) { review = selectionPage.frames().find(frame => frame.url().includes('capture-review.html')); if (!review) await selectionPage.waitForTimeout(100); }
+  assert.ok(review, 'capture opens inside the current page');
+  await review.getByRole('button', { name: '캡쳐한 글자 읽기', exact: true }).waitFor({ state: 'visible' });
+  await review.locator('#preview').waitFor({ state: 'visible' });
+  assert.equal(await page.evaluate(async token => (await chrome.storage.session.get(`capture-${token}`))[`capture-${token}`], token), undefined);
+  await selectionPage.screenshot({ path: resolve(output, '10-inline-capture.png'), fullPage: true });
+  await review.getByRole('button', { name: '캡쳐 창 닫기' }).click();
+  await selectionPage.locator('[data-haezoom-capture]').waitFor({ state: 'detached' });
   const captureSize = await selectionPage.evaluate(async () => {
     const image = new Image(); image.src = captureMessages.find(message => message.type === 'captureResult').payload.image; await image.decode(); return [image.naturalWidth, image.naturalHeight];
   });

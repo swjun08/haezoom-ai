@@ -41,7 +41,7 @@ try {
     const allowed = await chrome.extension.isAllowedFileSchemeAccess();
     helper.disabled = false;
     helper.textContent = allowed ? '이 PDF에 해줌 버튼 표시하기' : 'PDF 파일 접근 설정 열기';
-    status.textContent = allowed ? 'PDF를 새로고침하면 동그란 해줌 버튼이 표시돼요.' : '해줌 상세 설정에서 파일 URL에 대한 액세스를 허용해 주세요.';
+    if (!allowed) status.textContent = 'PDF에 버튼을 표시하려면 ‘표시 설정’에서 파일 접근을 허용해 주세요.';
     helper.onclick = async () => {
       if (!allowed) return chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
       try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] }); window.close(); }

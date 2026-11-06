@@ -1,5 +1,9 @@
 (() => {
-  if (globalThis.__haezoomHelper) return;
+  const version = chrome.runtime.getManifest?.().version || 'dev';
+  if (globalThis.__haezoomHelper?.version === version && globalThis.__haezoomHelper.runtime === chrome.runtime) return;
+  globalThis.__haezoomHelper?.dispose?.();
+  document.dispatchEvent(new Event('haezoom-helper-replace'));
+  document.querySelectorAll('[data-haezoom-helper],[data-haezoom-launcher]').forEach(element => element.remove());
   const controller = new AbortController();
   const host = document.createElement('div');
   host.setAttribute('data-haezoom-helper', '');
@@ -30,16 +34,24 @@
   const selectionPreview = create('div', '', 'selection'); const selectionLabel = create('strong', '선택한 문장'); const selectionText = create('p', '정리하고 싶은 문장을 드래그해 주세요.'); selectionPreview.append(selectionLabel, selectionText); panel.append(selectionPreview);
   const selectedAction = create('button', '선택한 내용 가져오기 →', 'action primary'); selectedAction.type = 'button'; selectedAction.disabled = true; panel.append(selectedAction);
   const menuStatus = create('p', '', 'status'); menuStatus.setAttribute('role', 'status');
+  const refresh = create('button', '새로고침하고 다시 사용', 'action'); refresh.type = 'button'; refresh.hidden = true;
+  refresh.onclick = () => location.reload();
+  const showError = error => {
+    const expired = /context invalidated|receiving end does not exist|message port closed/i.test(error?.message || '');
+    menuStatus.textContent = expired ? '해줌이 업데이트되었어요. 이 페이지를 새로고침한 뒤 다시 눌러 주세요. 작성 중인 내용은 먼저 보관해 주세요.' : (error?.message || '확장 아이콘에서 다시 시도해 주세요.');
+    refresh.hidden = !expired;
+    return menuStatus.textContent;
+  };
   const openView = async view => {
     try { const response = await chrome.runtime.sendMessage({ type: 'openWorkspace', payload: { view } }); if (!response?.ok) throw new Error(); closeMenu(); }
-    catch { menuStatus.textContent = '확장 아이콘에서 다시 열어 주세요.'; }
+    catch (error) { showError(error); }
   };
   const uploadAction = create('button', 'PDF 업로드 ↗', 'action'); uploadAction.type = 'button'; uploadAction.onclick = () => openView('upload'); panel.append(uploadAction);
   const captureAction = create('button', '화면 캡쳐하기 ▣', 'action'); captureAction.type = 'button';
   captureAction.onclick = async () => {
     captureAction.disabled = true;
     try { const result = await chrome.runtime.sendMessage({ type: 'startCapture' }); if (!result?.ok) throw new Error(result?.error || '캡쳐를 시작하지 못했어요.'); closeMenu(); }
-    catch (error) { menuStatus.textContent = error.message; }
+    catch (error) { showError(error); }
     finally { captureAction.disabled = false; }
   };
   panel.append(captureAction);
@@ -47,7 +59,7 @@
     const action = create('button', label, 'action'); action.type = 'button'; action.onclick = () => openView(view); panel.append(action);
   }
   const foot = create('div', '', 'foot'); foot.append(create('p', '드래그만으로 내용을 전송하지 않아요.'));
-  const hideLauncher = create('button', '이 페이지에서 버튼 숨기기', 'hide'); hideLauncher.type = 'button'; foot.append(hideLauncher); panel.append(menuStatus, foot);
+  const hideLauncher = create('button', '이 페이지에서 버튼 숨기기', 'hide'); hideLauncher.type = 'button'; foot.append(hideLauncher); panel.append(menuStatus, refresh, foot);
   const launcher = create('button', 'h.', 'bubble'); launcher.type = 'button'; launcher.setAttribute('aria-label', '해줌 도우미 열기'); launcher.setAttribute('aria-expanded', 'false'); launcher.setAttribute('aria-controls', panel.id); launcher.title = '해줌 도우미';
   wrap.append(panel, launcher); launcherShadow.append(launcherStyle, wrap); document.documentElement.append(launcherHost);
   launcher.style.touchAction = 'none';
@@ -150,9 +162,11 @@
       const response = await chrome.runtime.sendMessage({ type: 'selection', payload: { text: selectedText } });
       if (!response?.ok) throw new Error(response?.error || '확장을 다시 불러와 주세요.');
       hide(); closeMenu();
-    } catch { hint.textContent = '확장 아이콘에서 다시 시도해 주세요.'; menuStatus.textContent = hint.textContent; }
+    } catch (error) { hint.textContent = showError(error); panel.hidden = false; placeMenu(); }
     finally { main.disabled = false; main.textContent = '해줌으로 정리 →'; }
   };
-  const disable = message => { if (message.type !== 'disableHelper') return; controller.abort(); clearTimeout(timer); host.remove(); launcherHost.remove(); chrome.runtime.onMessage.removeListener(disable); delete globalThis.__haezoomHelper; };
-  chrome.runtime.onMessage.addListener(disable); globalThis.__haezoomHelper = true;
+  const dispose = () => { controller.abort(); clearTimeout(timer); host.remove(); launcherHost.remove(); try { chrome.runtime.onMessage.removeListener(disable); } catch {} delete globalThis.__haezoomHelper; };
+  const disable = message => { if (message.type === 'disableHelper') dispose(); };
+  document.addEventListener('haezoom-helper-replace', dispose, { signal: controller.signal });
+  chrome.runtime.onMessage.addListener(disable); globalThis.__haezoomHelper = { version, runtime: chrome.runtime, dispose };
 })();

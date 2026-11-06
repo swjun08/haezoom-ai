@@ -14,7 +14,16 @@ function enableGlobal() {
   globalQueue = work.catch(() => {}); return work;
 }
 chrome.permissions.onAdded.addListener(() => { enableGlobal().catch(console.error); });
-chrome.runtime.onInstalled.addListener(() => { enableGlobal().catch(console.error); });
+async function reconnectAllowedPages() {
+  if (await enableGlobal()) return;
+  const scripts = await chrome.scripting.getRegisteredContentScripts();
+  const matches = [...new Set(scripts.filter(script => script.id.startsWith('hz-')).flatMap(script => script.matches))];
+  if (await chrome.extension.isAllowedFileSchemeAccess()) matches.push('file:///*.pdf', 'file:///*.PDF');
+  if (!matches.length) return;
+  const tabs = await chrome.tabs.query({ url: matches });
+  await Promise.allSettled(tabs.map(tab => chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] })));
+}
+chrome.runtime.onInstalled.addListener(() => { reconnectAllowedPages().catch(console.error); });
 chrome.runtime.onStartup.addListener(() => { enableGlobal().catch(console.error); });
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (sender.id !== chrome.runtime.id || !['selection', 'openWorkspace', 'captureViewport', 'captureResult', 'startCapture', 'enableGlobal', 'disableGlobal'].includes(message.type)) return false;
@@ -51,9 +60,14 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       const image = message.payload?.image;
       if (!sender.tab || typeof image !== 'string' || !image.startsWith('data:image/png;base64,') || image.length > 8 * 1024 * 1024) throw new Error('캡쳐 영역이 너무 커요. 더 작은 영역을 골라 주세요.');
       const url = new URL(sender.tab.url);
-      await chrome.storage.session.set({ pendingCapture: { image, source: { title: sender.tab.title || '화면 캡쳐', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } } });
-      await chrome.tabs.create({ url: chrome.runtime.getURL('workspace.html#analyze') });
-      return;
+      const token = crypto.randomUUID();
+      const key = `capture-${token}`;
+      await chrome.storage.session.set({ [key]: { image, created: Date.now(), source: { title: sender.tab.title || '화면 캡쳐', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } } });
+      // Abandoned captures expire; each frame consumes only its own image.
+      const stored = await chrome.storage.session.get(null);
+      const expired = Object.keys(stored).filter(name => name.startsWith('capture-') && Date.now() - stored[name].created > 30 * 60 * 1000);
+      if (expired.length) await chrome.storage.session.remove(expired);
+      return chrome.runtime.getURL(`capture-review.html#${token}`);
     }
     if (message.type === 'openWorkspace') {
       const view = ['analyze', 'tasks', 'settings', 'upload'].includes(message.payload?.view) ? message.payload.view : 'analyze';

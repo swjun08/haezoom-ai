@@ -1,5 +1,11 @@
 (() => {
-  if (globalThis.__haezoomStartCapture) return;
+  const version = chrome.runtime.getManifest?.().version || 'dev';
+  if (globalThis.__haezoomCapture?.version === version && globalThis.__haezoomCapture.runtime === chrome.runtime) return;
+  globalThis.__haezoomCapture?.dispose();
+  document.dispatchEvent(new Event('haezoom-capture-replace'));
+  document.querySelectorAll('[data-haezoom-capture]').forEach(element => element.remove());
+  const lifecycle = new AbortController();
+  let activeCleanup = () => {};
   let capturing = false;
   globalThis.__haezoomStartCapture = async () => {
     if (capturing) return;
@@ -8,6 +14,7 @@
     hidden.forEach(({ element }) => { element.style.visibility = 'hidden'; });
     let overlay; let controller;
     const cleanup = () => { overlay?.remove(); controller?.abort(); hidden.forEach(({ element, visibility }) => { element.style.visibility = visibility; }); capturing = false; };
+    activeCleanup = cleanup;
     try {
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const response = await chrome.runtime.sendMessage({ type: 'captureViewport' });
@@ -50,15 +57,39 @@
           }
           confirm.disabled = true;
           const result = await chrome.runtime.sendMessage({ type: 'captureResult', payload: { image: cropped } });
-          if (!result?.ok) throw new Error(result?.error || '캡쳐를 가져오지 못했어요.'); cleanup();
-        } catch (error) { title.textContent = error.message; confirm.disabled = false; }
+          if (!result?.ok) throw new Error(result?.error || '캡쳐를 가져오지 못했어요.');
+          const expected = new URL(chrome.runtime.getURL('capture-review.html'));
+          const destination = new URL(result.data);
+          if (destination.origin !== expected.origin || destination.pathname !== expected.pathname) throw new Error('캡쳐 창을 열지 못했어요. 다시 시도해 주세요.');
+          const frame = document.createElement('iframe'); frame.src = destination.href; frame.title = '해줌 캡쳐 내용 확인';
+          frame.style.cssText = 'width:min(880px,calc(100vw - 32px));height:min(780px,calc(100dvh - 32px));border:0;border-radius:24px;background:white;box-shadow:0 16px 80px #0005;';
+          const container = create('div'); container.style.cssText = 'position:relative;';
+          const loading = create('div', '캡쳐한 내용을 열고 있어요…'); loading.setAttribute('role', 'status'); loading.style.cssText = 'position:absolute;top:50%;left:24px;right:24px;text-align:center;color:#6b7280;background:white;padding:16px;border-radius:12px;';
+          const exit = create('button', '×'); exit.setAttribute('aria-label', '캡쳐 창 닫기'); exit.style.cssText = 'position:absolute;right:16px;top:16px;width:36px;height:36px;padding:0;font-size:24px;border-radius:50%;'; exit.onclick = cleanup;
+          const retryFrame = create('button', '다시 열기'); retryFrame.hidden = true;
+          loading.append(document.createElement('br'), retryFrame);
+          retryFrame.onclick = () => { retryFrame.hidden = true; frame.src = destination.href; };
+          container.append(frame, loading, exit); surface.replaceChildren(container); surface.style.cssText = 'display:flex;align-items:center;justify-content:center;background:#14171f88;cursor:default;';
+          const loadingTimer = setTimeout(() => { loading.firstChild.textContent = '연결이 늦어지고 있어요. 다시 열거나 닫은 뒤 캡쳐해 주세요.'; retryFrame.hidden = false; }, 8000);
+          controller.signal.addEventListener('abort', () => clearTimeout(loadingTimer), { once: true });
+          window.addEventListener('message', event => {
+            if (event.source !== frame.contentWindow || event.origin !== expected.origin) return;
+            if (event.data?.type === 'haezoom-review-ready') { loading.hidden = true; exit.hidden = true; clearTimeout(loadingTimer); }
+            if (event.data?.type === 'haezoom-close-review') cleanup();
+          }, { signal: controller.signal });
+          frame.focus();
+        } catch (error) { title.textContent = /context invalidated/i.test(error.message) ? '해줌이 업데이트되었어요. 취소한 뒤 페이지를 새로고침해 주세요.' : error.message; confirm.disabled = false; }
       };
-      document.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); } if (event.key === 'Tab') { const controls = [retry, cancel, confirm].filter(element => !element.hidden && !element.disabled); const index = controls.indexOf(shadow.activeElement); event.preventDefault(); controls[(index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length].focus(); } }, { capture: true, signal: controller.signal });
+      document.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); } if (event.key === 'Tab' && !surface.querySelector('iframe')) { const controls = [retry, cancel, confirm].filter(element => !element.hidden && !element.disabled); const index = controls.indexOf(shadow.activeElement); event.preventDefault(); controls[(index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length].focus(); } }, { capture: true, signal: controller.signal });
       window.addEventListener('resize', cleanup, { signal: controller.signal }); cancel.focus();
     } catch (error) { cleanup(); throw error; }
   };
-  chrome.runtime.onMessage.addListener((message, sender, reply) => {
+  const listener = (message, sender, reply) => {
     if (message.type !== 'startCapture' || sender.id !== chrome.runtime.id) return false;
     globalThis.__haezoomStartCapture().then(() => reply({ ok: true }), error => reply({ ok: false, error: error.message })); return true;
-  });
+  };
+  const dispose = () => { activeCleanup(); lifecycle.abort(); try { chrome.runtime.onMessage.removeListener(listener); } catch {} delete globalThis.__haezoomStartCapture; delete globalThis.__haezoomCapture; };
+  document.addEventListener('haezoom-capture-replace', dispose, { signal: lifecycle.signal });
+  chrome.runtime.onMessage.addListener(listener);
+  globalThis.__haezoomCapture = { version, runtime: chrome.runtime, dispose };
 })();
