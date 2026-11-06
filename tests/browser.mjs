@@ -75,6 +75,8 @@ try {
   const menuNode = (await cdp.send('Accessibility.getFullAXTree')).nodes.find(entry => entry.name?.value === '해줌 도우미 기능' && !entry.ignored);
   const menuBox = (await cdp.send('DOM.getBoxModel', { backendNodeId: menuNode.backendDOMNodeId })).model.border;
   assert.ok(menuBox[0] >= 0 && menuBox[1] >= 0 && menuBox[4] <= 1440 && menuBox[5] <= 1050);
+  const anchorBox = await launcherHost.boundingBox();
+  assert.ok(menuBox[5] <= anchorBox.y - 8 || menuBox[1] >= anchorBox.y + anchorBox.height + 8, 'menu does not overlap launcher');
   await selectionPage.screenshot({ path: resolve(output, '07-draggable-menu.png'), fullPage: true });
   await clickClosedButton('해줌 메뉴 닫기');
   await selectionPage.mouse.move(movedPosition.x + 28, movedPosition.y + 28);
@@ -83,6 +85,18 @@ try {
   await selectionPage.setViewportSize({ width: 390, height: 700 });
   const resizedPosition = await launcherHost.boundingBox(); assert.ok(resizedPosition.x + resizedPosition.width <= 390 && resizedPosition.y + resizedPosition.height <= 700);
   await selectionPage.setViewportSize({ width: 1440, height: 1050 });
+  for (const [targetX, targetY] of [[720, 500], [90, 970], [1400, 60]]) {
+    const current = await launcherHost.boundingBox();
+    await selectionPage.mouse.move(current.x + 28, current.y + 28); await selectionPage.mouse.down();
+    await selectionPage.mouse.move(targetX, targetY, { steps: 10 }); await selectionPage.mouse.up();
+    await clickClosedButton('해줌 도우미 열기');
+    const node = (await cdp.send('Accessibility.getFullAXTree')).nodes.find(entry => entry.name?.value === '해줌 도우미 기능' && !entry.ignored);
+    const border = (await cdp.send('DOM.getBoxModel', { backendNodeId: node.backendDOMNodeId })).model.border;
+    const anchor = await launcherHost.boundingBox();
+    assert.ok(border[5] <= anchor.y - 8 || border[1] >= anchor.y + anchor.height + 8, 'menu never covers moved logo');
+    assert.ok(border[0] >= 0 && border[1] >= 0 && border[4] <= 1440 && border[5] <= 1050);
+    await clickClosedButton('해줌 메뉴 닫기');
+  }
   await clickClosedButton('해줌 도우미 열기');
   assert.ok(await buttonByName('선택한 내용 가져오기 →'));
   assert.equal(await selectionPage.evaluate(() => globalThis.lastMessage), undefined);

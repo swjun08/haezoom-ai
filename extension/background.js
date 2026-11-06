@@ -4,7 +4,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (message.type === 'startCapture') {
       const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = sender.tab || active;
-      if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('일반 웹페이지에서 캡쳐해 주세요. PDF 파일은 PDF 업로드를 이용해 주세요.');
+      if (!tab?.id || !/^(https?|file):/.test(tab.url || '')) throw new Error('웹페이지 또는 PDF 파일에서 캡쳐해 주세요.');
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['capture.js'] });
       const result = await chrome.tabs.sendMessage(tab.id, { type: 'startCapture' });
       if (!result?.ok) throw new Error(result?.error || '캡쳐를 시작하지 못했어요.');
@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       const image = message.payload?.image;
       if (!sender.tab || typeof image !== 'string' || !image.startsWith('data:image/png;base64,') || image.length > 8 * 1024 * 1024) throw new Error('캡쳐 영역이 너무 커요. 더 작은 영역을 골라 주세요.');
       const url = new URL(sender.tab.url);
-      await chrome.storage.session.set({ pendingCapture: { image, source: { title: sender.tab.title || '화면 캡쳐', url: url.origin + url.pathname } } });
+      await chrome.storage.session.set({ pendingCapture: { image, source: { title: sender.tab.title || '화면 캡쳐', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } } });
       await chrome.tabs.create({ url: chrome.runtime.getURL('workspace.html#analyze') });
       return;
     }
@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     const text = message.payload?.text;
     if (typeof text !== 'string' || !text.trim() || text.length > 45000) throw new Error('분석할 내용을 45,000자 이내로 선택해 주세요.');
     const url = sender.tab?.url ? new URL(sender.tab.url) : null;
-    const source = url ? { title: sender.tab.title || '선택한 공지', url: url.origin + url.pathname } : message.payload.source;
+    const source = url ? { title: sender.tab.title || '선택한 공지', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } : message.payload.source;
     await chrome.storage.session.set({ pendingSelection: { text, source } });
     await chrome.tabs.create({ url: chrome.runtime.getURL('workspace.html#analyze') });
   };

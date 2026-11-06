@@ -59,10 +59,13 @@
     if (panel.hidden) return;
     const anchor = launcher.getBoundingClientRect();
     panel.style.position = 'fixed'; panel.style.right = 'auto'; panel.style.bottom = 'auto';
-    panel.style.maxHeight = `${Math.max(80, innerHeight - 24)}px`;
+    const above = Math.max(0, anchor.top - 24);
+    const below = Math.max(0, innerHeight - anchor.bottom - 24);
+    const opensAbove = above >= below;
+    panel.style.maxHeight = `${Math.max(0, opensAbove ? above : below)}px`;
     const size = panel.getBoundingClientRect();
     const left = Math.max(12, Math.min(anchor.right - size.width, innerWidth - size.width - 12));
-    const top = anchor.top >= size.height + 24 ? anchor.top - size.height - 12 : Math.min(anchor.bottom + 12, innerHeight - size.height - 12);
+    const top = opensAbove ? anchor.top - size.height - 12 : anchor.bottom + 12;
     panel.style.left = `${left}px`; panel.style.top = `${Math.max(12, top)}px`;
   }
   function moveLauncher(left, top) {

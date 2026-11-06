@@ -20,20 +20,25 @@ const helper = document.getElementById('helper');
 let currentOrigin; let registrationId;
 try {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.url?.startsWith('file:') || /\.pdf(?:[?#]|$)/i.test(tab?.url || '')) {
-    status.textContent = 'PDF 화면에는 해줌 버튼이 표시되지 않아요. 아래 PDF 업로드로 문서를 선택해 주세요.';
-    document.getElementById('upload').textContent = '이 PDF를 해줌에 업로드하기';
-    document.getElementById('capture').disabled = true;
-    document.getElementById('capture').title = '로컬 PDF는 PDF 업로드를 이용해 주세요.';
-    document.getElementById('selection').disabled = true;
-    throw new Error('PDF는 아래 업로드 버튼을 이용해 주세요.');
-  }
+  if (tab?.url?.startsWith('file:')) {
+    const allowed = await chrome.extension.isAllowedFileSchemeAccess();
+    helper.disabled = false;
+    helper.textContent = allowed ? '이 PDF에 해줌 버튼 표시하기' : 'PDF 파일 접근 설정 열기';
+    status.textContent = allowed ? 'PDF를 새로고침하면 동그란 해줌 버튼이 표시돼요.' : '해줌 상세 설정에서 파일 URL에 대한 액세스를 허용해 주세요.';
+    helper.onclick = async () => {
+      if (!allowed) return chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
+      try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] }); window.close(); }
+      catch { status.textContent = 'PDF를 새로고침해 주세요. 표시되지 않으면 PDF 업로드도 사용할 수 있어요.'; }
+    };
+  } else {
   if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('일반 웹페이지에서 켤 수 있어요.');
   currentOrigin = new URL(tab.url).origin;
   registrationId = 'hz-' + [...new TextEncoder().encode(currentOrigin)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   const registrations = await chrome.scripting.getRegisteredContentScripts({ ids: [registrationId] });
   helper.textContent = registrations.length ? '이 사이트 해줌 버튼 끄기' : '이 사이트 해줌 버튼 켜기';
+  }
 } catch (error) { helper.disabled = true; helper.textContent = error.message; }
+if (currentOrigin) {
 helper.onclick = async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -52,3 +57,4 @@ helper.onclick = async () => {
     }
   } catch { status.textContent = '이 페이지에서는 도우미를 켤 수 없어요. 복사해 직접 붙여 넣어 주세요.'; }
 };
+}

@@ -1,0 +1,32 @@
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import assert from 'node:assert/strict';
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const temp = await mkdtemp(resolve(tmpdir(), 'haezoom-pdf-'));
+const stream = 'BT /F1 24 Tf 50 700 Td (PDF test notice) Tj ET\n';
+const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>', `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+let pdf = '%PDF-1.4\n'; const offsets = [0];
+objects.forEach((object, index) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; });
+const xref = Buffer.byteLength(pdf); pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(offset => String(offset).padStart(10, '0') + ' 00000 n ').join('\n')}\ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+const file = resolve(temp, 'notice.pdf'); await writeFile(file, pdf);
+const extension = resolve('extension');
+const context = await chromium.launchPersistentContext(resolve(temp, 'profile'), { headless: true, channel: 'chromium', args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`], viewport: { width: 1440, height: 1000 } });
+try {
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+  console.log('file access:', await worker.evaluate(() => chrome.extension.isAllowedFileSchemeAccess()));
+  const page = await context.newPage(); await page.goto(pathToFileURL(file).href); await page.waitForTimeout(1500);
+  await page.locator('[data-haezoom-launcher]').waitFor({ state: 'visible', timeout: 10000 });
+  const cdp = await context.newCDPSession(page);
+  const button = (await cdp.send('Accessibility.getFullAXTree')).nodes.find(entry => entry.name?.value === '해줌 도우미 열기' && !entry.ignored);
+  assert.ok(button);
+  const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: button.backendDOMNodeId });
+  await page.mouse.click((model.content[0] + model.content[4]) / 2, (model.content[1] + model.content[5]) / 2);
+  const nodes = (await cdp.send('Accessibility.getFullAXTree')).nodes;
+  assert.ok(nodes.some(entry => entry.name?.value === 'PDF 업로드 ↗' && !entry.ignored));
+  await mkdir('docs/screenshots', { recursive: true }); await page.screenshot({ path: 'docs/screenshots/09-local-pdf.png' });
+  console.log('PASS: actual local PDF viewer with circular launcher and menu.');
+} finally { await context.close(); }
