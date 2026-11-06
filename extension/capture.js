@@ -36,7 +36,8 @@
       const retry = create('button', '다시 선택'); retry.type = 'button'; retry.hidden = true;
       const confirm = create('button', '이 영역 미리보기', 'primary'); confirm.type = 'button'; confirm.disabled = true;
       bar.append(description, retry, cancel, confirm); surface.append(screen, shade, region, preview, bar); shadow.append(style, surface); document.documentElement.append(overlay);
-      controller = new AbortController(); let start = null; let bounds = null; let cropped = null;
+      controller = new AbortController(); let start = null; let bounds = null; let cropped = null; let reviewing = false;
+      const showReview = () => { cleanup(); globalThis.__haezoomShowReview({ image: cropped }); };
       const point = event => ({ x: Math.max(0, Math.min(innerWidth, event.clientX)), y: Math.max(0, Math.min(innerHeight, event.clientY)) });
       surface.addEventListener('pointerdown', event => { if (event.composedPath().includes(bar) || !preview.hidden || event.button !== 0) return; start = point(event); bounds = null; cropped = null; region.hidden = false; shade.hidden = true; region.style.width = region.style.height = '0px'; region.style.left = `${start.x}px`; region.style.top = `${start.y}px`; size.textContent = ''; confirm.disabled = true; surface.setPointerCapture(event.pointerId); event.preventDefault(); });
       surface.addEventListener('pointermove', event => { if (!start) return; const end = point(event); bounds = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) }; Object.assign(region.style, { left: `${bounds.x}px`, top: `${bounds.y}px`, width: `${bounds.width}px`, height: `${bounds.height}px` }); size.textContent = `${Math.round(bounds.width)} × ${Math.round(bounds.height)}`; });
@@ -55,32 +56,10 @@
             cropped = canvas.toDataURL('image/png'); canvas.width = canvas.height = 0;
             previewImage.src = cropped; preview.hidden = false; retry.hidden = false; confirm.textContent = '이 캡쳐 가져오기'; title.textContent = '이 부분을 가져올까요?'; hint.textContent = '개인정보가 없는지 확인해 주세요 · 외부 전송 없음'; return;
           }
-          confirm.disabled = true;
-          const result = await chrome.runtime.sendMessage({ type: 'captureResult', payload: { image: cropped } });
-          if (!result?.ok) throw new Error(result?.error || '캡쳐를 가져오지 못했어요.');
-          const expected = new URL(chrome.runtime.getURL('capture-review.html'));
-          const destination = new URL(result.data);
-          if (destination.origin !== expected.origin || destination.pathname !== expected.pathname) throw new Error('캡쳐 창을 열지 못했어요. 다시 시도해 주세요.');
-          const frame = document.createElement('iframe'); frame.src = destination.href; frame.title = '해줌 캡쳐 내용 확인';
-          frame.style.cssText = 'width:min(880px,calc(100vw - 32px));height:min(780px,calc(100dvh - 32px));border:0;border-radius:24px;background:white;box-shadow:0 16px 80px #0005;';
-          const container = create('div'); container.style.cssText = 'position:relative;';
-          const loading = create('div', '캡쳐한 내용을 열고 있어요…'); loading.setAttribute('role', 'status'); loading.style.cssText = 'position:absolute;top:50%;left:24px;right:24px;text-align:center;color:#6b7280;background:white;padding:16px;border-radius:12px;';
-          const exit = create('button', '×'); exit.setAttribute('aria-label', '캡쳐 창 닫기'); exit.style.cssText = 'position:absolute;right:16px;top:16px;width:36px;height:36px;padding:0;font-size:24px;border-radius:50%;'; exit.onclick = cleanup;
-          const retryFrame = create('button', '다시 열기'); retryFrame.hidden = true;
-          loading.append(document.createElement('br'), retryFrame);
-          retryFrame.onclick = () => { retryFrame.hidden = true; frame.src = destination.href; };
-          container.append(frame, loading, exit); surface.replaceChildren(container); surface.style.cssText = 'display:flex;align-items:center;justify-content:center;background:#14171f88;cursor:default;';
-          const loadingTimer = setTimeout(() => { loading.firstChild.textContent = '연결이 늦어지고 있어요. 다시 열거나 닫은 뒤 캡쳐해 주세요.'; retryFrame.hidden = false; }, 8000);
-          controller.signal.addEventListener('abort', () => clearTimeout(loadingTimer), { once: true });
-          window.addEventListener('message', event => {
-            if (event.source !== frame.contentWindow || event.origin !== expected.origin) return;
-            if (event.data?.type === 'haezoom-review-ready') { loading.hidden = true; exit.hidden = true; clearTimeout(loadingTimer); }
-            if (event.data?.type === 'haezoom-close-review') cleanup();
-          }, { signal: controller.signal });
-          frame.focus();
+          showReview();
         } catch (error) { title.textContent = /context invalidated/i.test(error.message) ? '해줌이 업데이트되었어요. 취소한 뒤 페이지를 새로고침해 주세요.' : error.message; confirm.disabled = false; }
       };
-      document.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); } if (event.key === 'Tab' && !surface.querySelector('iframe')) { const controls = [retry, cancel, confirm].filter(element => !element.hidden && !element.disabled); const index = controls.indexOf(shadow.activeElement); event.preventDefault(); controls[(index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length].focus(); } }, { capture: true, signal: controller.signal });
+      document.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); cleanup(); } if (event.key === 'Tab') { const controls = reviewing ? [...surface.querySelectorAll('button,textarea')].filter(element => !element.disabled && !element.closest('[hidden]')) : [retry, cancel, confirm].filter(element => !element.hidden && !element.disabled); const index = controls.indexOf(shadow.activeElement); event.preventDefault(); controls[(index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length].focus(); } }, { capture: true, signal: controller.signal });
       window.addEventListener('resize', cleanup, { signal: controller.signal }); cancel.focus();
     } catch (error) { cleanup(); throw error; }
   };

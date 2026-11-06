@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../extension');
 const manifest = JSON.parse(await readFile(resolve(root, 'manifest.json'), 'utf8'));
 for (const file of [manifest.action.default_popup, manifest.background.service_worker, manifest.options_page.split('#')[0], ...Object.values(manifest.icons)]) await access(resolve(root, file));
-for (const name of ['popup.html', 'workspace.html']) {
+for (const name of ['popup.html', 'workspace.html', 'capture-processor.html']) {
   const html = await readFile(resolve(root, name), 'utf8');
   for (const match of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {
     if (!match[1].includes('://')) await access(resolve(root, match[1].split('#')[0]));

@@ -23,10 +23,36 @@ async function reconnectAllowedPages() {
   const tabs = await chrome.tabs.query({ url: matches });
   await Promise.allSettled(tabs.map(tab => chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] })));
 }
-chrome.runtime.onInstalled.addListener(() => { reconnectAllowedPages().catch(console.error); });
+chrome.runtime.onInstalled.addListener(() => {
+  reconnectAllowedPages().catch(console.error);
+  chrome.storage.session.get(null).then(stored => {
+    const legacy = Object.keys(stored).filter(key => key.startsWith('capture-') || ['pendingCapture', 'pendingSelection'].includes(key));
+    if (legacy.length) return chrome.storage.session.remove(legacy);
+  }).catch(console.error);
+});
 chrome.runtime.onStartup.addListener(() => { enableGlobal().catch(console.error); });
+let readingCapture = false;
+async function readCapture(image) {
+  if (readingCapture) throw new Error('다른 캡쳐의 글자를 읽고 있어요. 잠시 뒤 다시 눌러 주세요.');
+  readingCapture = true;
+  let timeout;
+  try {
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+    if (!contexts.length) await chrome.offscreen.createDocument({ url: 'capture-processor.html', reasons: ['WORKERS', 'BLOBS'], justification: '사용자가 선택한 캡쳐 이미지의 글자를 새 창 없이 기기 안에서 읽습니다.' });
+    const result = await Promise.race([
+      chrome.runtime.sendMessage({ type: 'processCapture', image }),
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('글자 읽기가 오래 걸리고 있어요. 더 작은 영역으로 다시 시도해 주세요.')), 120000); })
+    ]);
+    if (!result?.ok || typeof result.text !== 'string') throw new Error(result?.error || '글자를 읽지 못했어요.');
+    return result.text.slice(0, 45000);
+  } finally {
+    clearTimeout(timeout);
+    try { await chrome.offscreen.closeDocument(); } catch {}
+    readingCapture = false;
+  }
+}
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id || !['selection', 'openWorkspace', 'captureViewport', 'captureResult', 'startCapture', 'enableGlobal', 'disableGlobal'].includes(message.type)) return false;
+  if (sender.id !== chrome.runtime.id || !['selection', 'openWorkspace', 'captureViewport', 'readCapture', 'startCapture', 'enableGlobal', 'disableGlobal'].includes(message.type)) return false;
   const open = async () => {
     if (message.type === 'enableGlobal' || message.type === 'disableGlobal') {
       if (!sender.url?.startsWith(chrome.runtime.getURL(''))) throw new Error('확장 설정에서 변경해 주세요.');
@@ -44,7 +70,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = sender.tab || active;
       if (!tab?.id || !/^(https?|file):/.test(tab.url || '')) throw new Error('웹페이지 또는 PDF 파일에서 캡쳐해 주세요.');
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['capture.js'] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['review.js', 'capture.js'] });
       const result = await chrome.tabs.sendMessage(tab.id, { type: 'startCapture' });
       if (!result?.ok) throw new Error(result?.error || '캡쳐를 시작하지 못했어요.');
       return;
@@ -56,18 +82,10 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       try { return await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }); }
       catch { throw new Error('상단 해줌 아이콘에서 ‘현재 화면 캡쳐하기’를 눌러 시작해 주세요.'); }
     }
-    if (message.type === 'captureResult') {
+    if (message.type === 'readCapture') {
       const image = message.payload?.image;
       if (!sender.tab || typeof image !== 'string' || !image.startsWith('data:image/png;base64,') || image.length > 8 * 1024 * 1024) throw new Error('캡쳐 영역이 너무 커요. 더 작은 영역을 골라 주세요.');
-      const url = new URL(sender.tab.url);
-      const token = crypto.randomUUID();
-      const key = `capture-${token}`;
-      await chrome.storage.session.set({ [key]: { image, created: Date.now(), source: { title: sender.tab.title || '화면 캡쳐', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } } });
-      // Abandoned captures expire; each frame consumes only its own image.
-      const stored = await chrome.storage.session.get(null);
-      const expired = Object.keys(stored).filter(name => name.startsWith('capture-') && Date.now() - stored[name].created > 30 * 60 * 1000);
-      if (expired.length) await chrome.storage.session.remove(expired);
-      return chrome.runtime.getURL(`capture-review.html#${token}`);
+      return readCapture(image);
     }
     if (message.type === 'openWorkspace') {
       const view = ['analyze', 'tasks', 'settings', 'upload'].includes(message.payload?.view) ? message.payload.view : 'analyze';
@@ -76,10 +94,12 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     }
     const text = message.payload?.text;
     if (typeof text !== 'string' || !text.trim() || text.length > 45000) throw new Error('분석할 내용을 45,000자 이내로 선택해 주세요.');
-    const url = sender.tab?.url ? new URL(sender.tab.url) : null;
-    const source = url ? { title: sender.tab.title || '선택한 공지', url: url.protocol === 'file:' ? '' : url.origin + url.pathname } : message.payload.source;
-    await chrome.storage.session.set({ pendingSelection: { text, source } });
-    await chrome.tabs.create({ url: chrome.runtime.getURL('workspace.html#analyze') });
+    const [active] = sender.tab ? [] : await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = sender.tab || active;
+    if (!tab?.id || !/^(https?|file):/.test(tab.url || '')) throw new Error('공지 웹페이지에서 문장을 선택해 주세요.');
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['review.js'] });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: 'showSelectionReview', payload: { text } });
+    if (!result?.ok) throw new Error(result?.error || '내용 확인 창을 열지 못했어요.');
   };
   open().then(data => reply({ ok: true, data }), error => reply({ ok: false, error: error.message }));
   return true;

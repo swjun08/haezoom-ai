@@ -16,7 +16,14 @@ try {
   const page = await context.newPage();
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto(`chrome-extension://${extensionId}/workspace.html`);
-  await page.getByRole('button', { name: '서버 없이 샘플 결과 둘러보기' }).click();
+  await page.setViewportSize({ width: 1440, height: 683 });
+  await page.getByRole('button', { name: '샘플 결과 보기' }).click();
+  for (const [width, height] of [[1440, 683], [1280, 600], [1024, 640]]) {
+    await page.setViewportSize({ width, height });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 1), false, 'document flow fits the window');
+    for (const id of ['run', 'sample', 'save']) { const box = await page.locator('#' + id).boundingBox(); assert.ok(box && box.y >= 0 && box.y + box.height <= height, id + ' remains visible'); }
+  }
+  await page.setViewportSize({ width: 1440, height: 683 });
   await page.screenshot({ path: resolve(output, '01-document.png'), fullPage: true });
   await page.getByRole('button', { name: '할 일 화면으로 가져가기 (미리보기)' }).click();
   assert.equal(await page.locator('#task-list .task-card').count(), 2);
@@ -36,12 +43,6 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.reload();
   assert.equal(await page.locator('#task-list .task-card').count(), 0);
-  const newTab = context.waitForEvent('page');
-  const response = await page.evaluate(() => chrome.runtime.sendMessage({ type: 'selection', payload: { text: '신청서를 다음 주 금요일까지 제출해 주세요.', source: { title: '테스트 공지' } } }));
-  assert.equal(response.ok, true);
-  const draftPage = await newTab; await draftPage.waitForLoadState();
-  assert.match(await draftPage.locator('#input-text').inputValue(), /신청서/);
-  assert.equal(await draftPage.evaluate(async () => (await chrome.storage.session.get('pendingSelection')).pendingSelection), undefined);
   const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await popup.setViewportSize({ width: 390, height: 780 });
   await popup.locator('body').screenshot({ path: resolve(output, '04-popup.png') });
@@ -132,15 +133,13 @@ try {
   assert.equal(await launcherHost.count(), 1);
   await clickClosedButton('이 페이지에서 버튼 숨기기');
   assert.equal(await selectionPage.locator('[data-haezoom-launcher]').isVisible(), false);
+  await selectionPage.setViewportSize({ width: 1440, height: 683 });
   const frame = 'data:image/png;base64,' + (await selectionPage.screenshot()).toString('base64');
-  const token = crypto.randomUUID();
-  const croppedFixture = 'data:image/png;base64,' + (await selectionPage.screenshot({ clip: { x: 200, y: 200, width: 500, height: 250 } })).toString('base64');
-  await page.evaluate(async ({ token, frame }) => chrome.storage.session.set({ [`capture-${token}`]: { image: frame, created: Date.now(), source: { title: '테스트' } } }), { token, frame: croppedFixture });
-  await selectionPage.evaluate(({ frame, extensionId, token }) => {
+  await selectionPage.evaluate(frame => {
     globalThis.captureMessages = [];
-    chrome.runtime.getURL = path => `chrome-extension://${extensionId}/${path}`;
-    chrome.runtime.sendMessage = async message => { globalThis.captureMessages.push(message); return message.type === 'captureViewport' ? { ok: true, data: frame } : { ok: true, data: `chrome-extension://${extensionId}/capture-review.html#${token}` }; };
-  }, { frame, extensionId, token });
+    chrome.runtime.sendMessage = async message => { globalThis.captureMessages.push(message); return message.type === 'captureViewport' ? { ok: true, data: frame } : { ok: true, data: '11월 12일까지 참가 신청서를 제출해 주세요.' }; };
+  }, frame);
+  await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'review.js'), 'utf8') });
   await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'capture.js'), 'utf8') });
   await selectionPage.evaluate(() => globalThis.__haezoomStartCapture());
   assert.equal(await selectionPage.locator('[data-haezoom-capture]').isVisible(), true);
@@ -148,24 +147,47 @@ try {
   await selectionPage.mouse.move(700, 450, { steps: 10 }); await selectionPage.mouse.up();
   await clickClosedButton('이 영역 미리보기');
   await selectionPage.screenshot({ path: resolve(output, '08-capture-preview.png'), fullPage: true });
-  assert.equal(await selectionPage.evaluate(() => captureMessages.filter(message => message.type === 'captureResult').length), 0);
+  assert.equal(await selectionPage.evaluate(() => captureMessages.filter(message => message.type === 'readCapture').length), 0);
   await clickClosedButton('이 캡쳐 가져오기');
-  let review;
-  for (let attempt = 0; attempt < 50 && !review; attempt++) { review = selectionPage.frames().find(frame => frame.url().includes('capture-review.html')); if (!review) await selectionPage.waitForTimeout(100); }
-  assert.ok(review, 'capture opens inside the current page');
-  await review.getByRole('button', { name: '캡쳐한 글자 읽기', exact: true }).waitFor({ state: 'visible' });
-  await review.locator('#preview').waitFor({ state: 'visible' });
-  assert.equal(await page.evaluate(async token => (await chrome.storage.session.get(`capture-${token}`))[`capture-${token}`], token), undefined);
+  assert.ok(await buttonByName('캡쳐한 글자 읽기'), 'review controls appear without loading another document');
+  assert.equal(selectionPage.frames().length, 1, 'review does not create an iframe');
   await selectionPage.screenshot({ path: resolve(output, '10-inline-capture.png'), fullPage: true });
-  await review.getByRole('button', { name: '캡쳐 창 닫기' }).click();
-  await selectionPage.locator('[data-haezoom-capture]').waitFor({ state: 'detached' });
+  await clickClosedButton('캡쳐한 글자 읽기');
+  const tree = (await cdp.send('Accessibility.getFullAXTree')).nodes;
+  const textbox = tree.find(node => node.role?.value === 'textbox' && node.name?.value === '읽어온 내용' && !node.ignored);
+  assert.equal(textbox.value.value, '11월 12일까지 참가 신청서를 제출해 주세요.');
+  await clickClosedButton('할 일 정리하기');
+  assert.ok((await cdp.send('Accessibility.getFullAXTree')).nodes.some(node => node.name?.value?.includes('AI 분석은 아직 연결 전')));
   const captureSize = await selectionPage.evaluate(async () => {
-    const image = new Image(); image.src = captureMessages.find(message => message.type === 'captureResult').payload.image; await image.decode(); return [image.naturalWidth, image.naturalHeight];
+    const image = new Image(); image.src = captureMessages.find(message => message.type === 'readCapture').payload.image; await image.decode(); return [image.naturalWidth, image.naturalHeight];
   });
   assert.deepEqual(captureSize, [500, 250]);
+  await selectionPage.screenshot({ path: resolve(output, '11-inline-capture-text.png'), fullPage: true });
+  await clickClosedButton('확인 창 닫기');
+  await selectionPage.locator('[data-haezoom-capture]').waitFor({ state: 'detached' });
   await selectionPage.evaluate(() => globalThis.__haezoomStartCapture());
   await selectionPage.keyboard.press('Escape');
   assert.equal(await selectionPage.locator('[data-haezoom-capture]').count(), 0);
+  for (const [width, height, name] of [[1200, 240, '12-wide-image.png'], [240, 1200, '13-tall-image.png']]) {
+    await selectionPage.evaluate(({ width, height }) => {
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = '#f0f3f8'; ctx.fillRect(0, 0, width, height);
+      for (const [x, y, color] of [[0, 0, '#eb5757'], [width - 50, 0, '#219653'], [0, height - 50, '#2f80ed'], [width - 50, height - 50, '#f2c94c']]) { ctx.fillStyle = color; ctx.fillRect(x, y, 50, 50); }
+      globalThis.__haezoomShowReview({ image: canvas.toDataURL('image/png') });
+    }, { width, height });
+    const tree = (await cdp.send('Accessibility.getFullAXTree')).nodes;
+    const imageNode = tree.find(node => node.role?.value === 'image' && node.name?.value === '선택한 캡쳐 영역' && !node.ignored);
+    const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: imageNode.backendDOMNodeId });
+    const measured = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: 'function() { const box = this.getBoundingClientRect(); const parent = this.parentElement.getBoundingClientRect(); return { fit: getComputedStyle(this).objectFit, left: box.left, right: box.right, top: box.top, bottom: box.bottom, parent: { left: parent.left, right: parent.right, top: parent.top, bottom: parent.bottom } }; }', returnByValue: true });
+    const fit = measured.result.value; assert.equal(fit.fit, 'contain');
+    assert.ok(fit.left >= fit.parent.left && fit.right <= fit.parent.right && fit.top >= fit.parent.top && fit.bottom <= fit.parent.bottom);
+    await selectionPage.screenshot({ path: resolve(output, name), fullPage: true });
+    await clickClosedButton('크게 보기 ↗');
+    assert.ok(await buttonByName('돌아가기'));
+    await selectionPage.keyboard.press('Escape');
+    assert.ok(await buttonByName('크게 보기 ↗'));
+    await clickClosedButton('확인 창 닫기');
+  }
   assert.deepEqual(errors, []);
-  console.log('PASS: real unpacked extension load, samples, edit/confirm/complete/filter, responsive layout, reset, background selection handoff; helper DOM test (mock runtime): selection chip, no auto-send, click, private input exclusion.');
+  console.log('PASS: real extension workspace, samples/tasks/edit/filter/reset, single-screen document flow at 3 desktop sizes. Mock runtime UI: selection, drag/menu boundaries, expired context, 500x250 crop, no-iframe review/OCR response, close/Esc, wide/tall contain + full-image view.');
 } finally { await context.close(); }
