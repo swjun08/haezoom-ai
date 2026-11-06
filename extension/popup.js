@@ -20,7 +20,7 @@ try {
   currentOrigin = new URL(tab.url).origin;
   registrationId = 'hz-' + [...new TextEncoder().encode(currentOrigin)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   const registrations = await chrome.scripting.getRegisteredContentScripts({ ids: [registrationId] });
-  helper.textContent = registrations.length ? '이 사이트 드래그 도우미 끄기' : '이 사이트 드래그 도우미 켜기';
+  helper.textContent = registrations.length ? '이 사이트 해줌 버튼 끄기' : '이 사이트 해줌 버튼 켜기';
 } catch (error) { helper.disabled = true; helper.textContent = error.message; }
 helper.onclick = async () => {
   try {
@@ -31,12 +31,12 @@ helper.onclick = async () => {
       const tabs = await chrome.tabs.query({ url: `${currentOrigin}/*` });
       await Promise.allSettled(tabs.map(entry => chrome.tabs.sendMessage(entry.id, { type: 'disableHelper' })));
       await chrome.permissions.remove({ origins: [`${currentOrigin}/*`] });
-      helper.textContent = '이 사이트 드래그 도우미 켜기'; status.textContent = '이 사이트의 드래그 도우미를 껐어요.';
+      helper.textContent = '이 사이트 해줌 버튼 켜기'; status.textContent = '이 사이트의 드래그 도우미를 껐어요.';
     } else {
       if (!await chrome.permissions.request({ origins: [`${currentOrigin}/*`] })) return;
       await chrome.scripting.registerContentScripts([{ id: registrationId, matches: [`${currentOrigin}/*`], js: ['selection-helper.js'], runAt: 'document_idle' }]);
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] });
-      helper.textContent = '이 사이트 드래그 도우미 끄기'; status.textContent = '문장을 드래그하면 옆에 정리 버튼이 나타나요. 텍스트는 자동 전송되지 않아요.';
+      helper.textContent = '이 사이트 해줌 버튼 끄기'; status.textContent = '오른쪽 아래 동그란 해줌 버튼을 눌러 기능을 열어보세요. 문장 드래그도 지원해요.';
     }
   } catch { status.textContent = '이 페이지에서는 도우미를 켤 수 없어요. 복사해 직접 붙여 넣어 주세요.'; }
 };

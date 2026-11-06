@@ -50,6 +50,25 @@ try {
   await selectionPage.goto('https://school.example/notice');
   await selectionPage.evaluate(() => { globalThis.chrome = { runtime: { sendMessage: async message => { globalThis.lastMessage = message; return { ok: true }; }, onMessage: { addListener() {}, removeListener() {} } } }; });
   await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'selection-helper.js'), 'utf8') });
+  const cdp = await context.newCDPSession(selectionPage);
+  const buttonByName = async name => {
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    return nodes.find(entry => entry.role?.value === 'button' && entry.name?.value === name && !entry.ignored);
+  };
+  const clickClosedButton = async name => {
+    const button = await buttonByName(name); assert.ok(button, `button present: ${name}`);
+    const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: button.backendDOMNodeId });
+    await selectionPage.mouse.click((model.content[0] + model.content[4]) / 2, (model.content[1] + model.content[5]) / 2);
+  };
+  assert.ok(await buttonByName('해줌 도우미 열기'));
+  await clickClosedButton('해줌 도우미 열기');
+  assert.ok(await buttonByName('선택한 내용 가져오기 →'));
+  assert.equal(await selectionPage.evaluate(() => globalThis.lastMessage), undefined);
+  await selectionPage.screenshot({ path: resolve(output, '06-floating-menu.png'), fullPage: true });
+  await clickClosedButton('내 할 일 둘러보기 ↗');
+  assert.deepEqual(await selectionPage.evaluate(() => globalThis.lastMessage), { type: 'openWorkspace', payload: { view: 'tasks' } });
+  await selectionPage.evaluate(() => { delete globalThis.lastMessage; });
+  await selectionPage.locator('#notice').click();
   await selectionPage.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.getElementById('notice')); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); document.dispatchEvent(new PointerEvent('pointerup')); });
   const host = selectionPage.locator('[data-haezoom-helper]'); await host.waitFor({ state: 'visible' });
   assert.equal(await selectionPage.evaluate(() => globalThis.lastMessage), undefined);
@@ -62,6 +81,12 @@ try {
   await selectionPage.locator('textarea').selectText();
   await selectionPage.waitForTimeout(250);
   assert.equal(await host.isVisible(), false);
+  await clickClosedButton('해줌 도우미 열기');
+  await selectionPage.keyboard.press('Escape');
+  assert.equal(await buttonByName('내 할 일 둘러보기 ↗'), undefined);
+  await clickClosedButton('해줌 도우미 열기');
+  await clickClosedButton('이 페이지에서 버튼 숨기기');
+  assert.equal(await selectionPage.locator('[data-haezoom-launcher]').isVisible(), false);
   assert.deepEqual(errors, []);
   console.log('PASS: real unpacked extension load, samples, edit/confirm/complete/filter, responsive layout, reset, background selection handoff; helper DOM test (mock runtime): selection chip, no auto-send, click, private input exclusion.');
 } finally { await context.close(); }
