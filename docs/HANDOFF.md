@@ -1,0 +1,40 @@
+# 후배 개발자 인계 명세
+
+## 이번 변경의 범위
+
+PM 요청에 따라 화면/사용성 개선만 먼저 전달합니다. 기존 CRX의 backend와 Calendar 코드를 옮기지 않았습니다. 실제 AI 분석, 영구 저장, 알림 및 Calendar 구현은 다음 담당자의 작업입니다. 현재 샘플은 고정 기대 결과이며 성능 측정 결과가 아닙니다.
+
+## 연결할 위치
+
+1. `workspace.js`의 `run` 버튼: 동의 체크, 빈 입력·45,000자 제한, 취소·진행·실패·재시도 UI를 거쳐 서버 API 호출. 응답은 `validateAnalysis` → `makeItems`로 변환. 샘플 버튼을 실제 분석 버튼으로 위장하지 말 것.
+2. `save`/수동 추가/편집/완료/삭제: 현재 메모리 `items` 대신 background의 단일 직렬화 저장 경로 연결. 화면 카드나 DOM을 저장 원본으로 사용하지 말 것. 사용자 확인 상태·원문·상세 필드를 보존할 것.
+3. 캘린더 버튼: 확인 완료 + 유효한 날짜 + 미완료 항목만 대상. OAuth 확장 ID 설정을 문서화. 안정적인 항목 ID로 원격 이벤트 ID를 만들고 두 화면이 같은 등록 경로를 사용할 것. 재시도·다중 클릭·부분 실패에도 중복 방지. 수정·삭제·완료의 원격 반영 정책을 UI에 명시.
+4. 알림: 확인된 task만 한국 시간 09:00에 3/1/0일 전 예약. onInstalled/onStartup와 저장 변경 때 재조정. 서비스 워커가 깨어날 때마다 전체 알람 삭제하지 말 것. 날짜 범위/원문 날짜/이미 지난 시각은 검토로 돌릴 것.
+5. 기존 `background.js`의 선택 문장 전달과 `selection-helper.js` 인터페이스는 유지. `pendingSelection` 읽은 뒤 삭제하는 동작을 지킬 것.
+
+## 데이터 계약
+
+```json
+{
+  "summary": "문서 요약",
+  "tasks": [{"title":"제목","action":"행동","deadline":"2026-11-12","materials":["신청서"],"cost":15000,"submission":"담임 선생님","evidence":"원문 근거","needs_review":false}],
+  "schedules": [{"title":"행사","date":"11월 18일","time":"오전 9시","location":null,"details":"행사 설명","evidence":"원문 근거","needs_review":true}]
+}
+```
+
+각 항목의 원문 날짜는 별도 보존. 연도/발행일이 없는 날짜를 현재 시점만 보고 올해·내년으로 확정하지 않습니다. 영속 모델에는 `id, kind, title, action/details, date, originalDate, materials, cost, submission, evidence, needs_review, confirmed, completed, source, revision, calendarEventId`를 포함합니다. 일정의 시간/장소도 유지합니다. `source.url`은 쿼리/해시를 제외합니다.
+
+권장 서비스 인터페이스: `analyze({text,source,signal})`, `listItems()`, `saveItems(items)`, `updateItem(id,patch,revision)`, `deleteItem(id)`, `syncCalendar(ids)`. 화면에 저장 성공을 표시하는 시점은 실제 쓰기 성공 이후여야 합니다.
+
+## 보안·개인정보
+
+AI 제공자 키는 서버 Secret. 확장 번들/저장소에 포함하지 않습니다. 공개 서버는 인증·사용자별/전역 사용량·비용 상한을 갖추고, 항목별 스키마 검증 및 서버 오류 일반화를 적용합니다. 드래그만으로 내용을 전송하지 말고 전송 내용을 확인받습니다. 외부 AI 전송 안내는 실제 제공자와 경유지를 명시합니다. 저장소와 로그에 원문·개인정보·토큰을 남기지 않습니다.
+
+## 완료 검증
+
+- 개인정보 없는 가상 문서 5개를 입력해 기대값/실제 JSON/오류를 제출. 고정 샘플은 정확도 증거로 사용하지 않기.
+- 선택 텍스트와 PDF 각각: 분석 → 원문 확인 → 저장 → 탭 닫기/재열기 → 상세 필드 유지.
+- 검토 필요 항목은 모든 Calendar/알림 진입점에서 제외되는지 검증.
+- 중복 클릭·두 탭·만료 인증·네트워크 실패·재시작 시 데이터 유실/중복이 없는지 검증.
+- OCR 실문서/표, 스캔 PDF, 큰 파일, 잘못된 파일은 실제 브라우저에서 별도 검증.
+- 접근성: 키보드, 초점, 확대, 상태 안내, 좁은 화면 확인.

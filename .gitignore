@@ -1,0 +1,9 @@
+.env*
+!.env.example
+.dev.vars*
+node_modules/
+.wrangler/
+playwright-report/
+test-results/
+*.zip
+.DS_Store

@@ -1,0 +1,3 @@
+extension/vendor/** -diff
+extension/fonts/** -diff
+*.png binary
