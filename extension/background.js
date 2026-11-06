@@ -1,6 +1,36 @@
+const globalOrigins = ['https://*/*', 'http://*/*'];
+let globalQueue = Promise.resolve();
+function enableGlobal() {
+  const work = globalQueue.then(async () => {
+    if (!await chrome.permissions.contains({ origins: globalOrigins })) return false;
+    const scripts = await chrome.scripting.getRegisteredContentScripts();
+    if (!scripts.some(script => script.id === 'hz-global')) await chrome.scripting.registerContentScripts([{ id: 'hz-global', matches: globalOrigins, js: ['selection-helper.js'], runAt: 'document_idle' }]);
+    const oldIds = scripts.filter(script => script.id.startsWith('hz-') && script.id !== 'hz-global').map(script => script.id);
+    if (oldIds.length) await chrome.scripting.unregisterContentScripts({ ids: oldIds });
+    const tabs = await chrome.tabs.query({ url: globalOrigins });
+    await Promise.allSettled(tabs.map(tab => chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] })));
+    return true;
+  });
+  globalQueue = work.catch(() => {}); return work;
+}
+chrome.permissions.onAdded.addListener(() => { enableGlobal().catch(console.error); });
+chrome.runtime.onInstalled.addListener(() => { enableGlobal().catch(console.error); });
+chrome.runtime.onStartup.addListener(() => { enableGlobal().catch(console.error); });
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id || !['selection', 'openWorkspace', 'captureViewport', 'captureResult', 'startCapture'].includes(message.type)) return false;
+  if (sender.id !== chrome.runtime.id || !['selection', 'openWorkspace', 'captureViewport', 'captureResult', 'startCapture', 'enableGlobal', 'disableGlobal'].includes(message.type)) return false;
   const open = async () => {
+    if (message.type === 'enableGlobal' || message.type === 'disableGlobal') {
+      if (!sender.url?.startsWith(chrome.runtime.getURL(''))) throw new Error('확장 설정에서 변경해 주세요.');
+      if (message.type === 'enableGlobal') return enableGlobal();
+      await globalQueue;
+      const scripts = await chrome.scripting.getRegisteredContentScripts();
+      const ids = scripts.filter(script => script.id.startsWith('hz-')).map(script => script.id);
+      if (ids.length) await chrome.scripting.unregisterContentScripts({ ids });
+      const tabs = await chrome.tabs.query({ url: globalOrigins });
+      await Promise.allSettled(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { type: 'disableHelper' })));
+      await chrome.permissions.remove({ origins: globalOrigins });
+      return true;
+    }
     if (message.type === 'startCapture') {
       const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = sender.tab || active;

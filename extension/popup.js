@@ -1,5 +1,22 @@
 const open = hash => chrome.tabs.create({ url: chrome.runtime.getURL(`workspace.html#${hash}`) });
 const status = document.getElementById('status');
+const globalButton = document.getElementById('global-helper');
+const globalOrigins = ['https://*/*', 'http://*/*'];
+const hasGlobal = (await chrome.scripting.getRegisteredContentScripts({ ids: ['hz-global'] })).length > 0;
+globalButton.textContent = hasGlobal ? '모든 사이트에서 해줌 버튼 끄기' : '모든 사이트에서 해줌 버튼 켜기';
+globalButton.onclick = async () => {
+  try {
+    if (hasGlobal) {
+      const result = await chrome.runtime.sendMessage({ type: 'disableGlobal' });
+      if (!result?.ok) throw new Error(result?.error);
+    } else {
+      if (!await chrome.permissions.request({ origins: globalOrigins })) { status.textContent = '허용하지 않은 사이트에는 버튼이 표시되지 않아요.'; return; }
+      const result = await chrome.runtime.sendMessage({ type: 'enableGlobal' });
+      if (!result?.ok || !result.data) throw new Error(result?.error || '권한을 확인해 주세요.');
+    }
+    location.reload();
+  } catch (error) { status.textContent = error.message || '해줌 버튼 설정을 변경하지 못했어요.'; }
+};
 document.getElementById('tasks').onclick = () => open('tasks');
 document.getElementById('upload').onclick = () => open('upload');
 document.getElementById('settings').onclick = () => open('settings');
@@ -35,6 +52,8 @@ try {
   currentOrigin = new URL(tab.url).origin;
   registrationId = 'hz-' + [...new TextEncoder().encode(currentOrigin)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   const registrations = await chrome.scripting.getRegisteredContentScripts({ ids: [registrationId] });
+  if (hasGlobal) { helper.disabled = true; helper.textContent = '모든 일반 웹사이트에서 자동 표시 중'; }
+  else
   helper.textContent = registrations.length ? '이 사이트 해줌 버튼 끄기' : '이 사이트 해줌 버튼 켜기';
   }
 } catch (error) { helper.disabled = true; helper.textContent = error.message; }
