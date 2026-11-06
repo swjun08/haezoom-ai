@@ -25,7 +25,8 @@
   const panel = create('section', '', 'panel'); panel.hidden = true; panel.id = 'haezoom-menu'; panel.setAttribute('aria-label', '해줌 도우미 기능');
   const top = create('div', '', 'top'); const brand = create('div', '', 'brand'); brand.append(create('span', 'h.', 'mini'), create('span', '해줌 AI'));
   const dismiss = create('button', '×', 'close'); dismiss.type = 'button'; dismiss.setAttribute('aria-label', '해줌 메뉴 닫기'); top.append(brand, dismiss);
-  panel.append(top, create('h2', '긴 공지 대신, 해야 할 일만.'), create('p', '문장을 선택하거나 문서를 가져와 보세요.'), create('p', '화면 검토 버전 · AI·저장·캘린더 미연동', 'tag'));
+  const introduction = create('p', '공지 속 할 일과 마감일을 한눈에 정리해요.'); introduction.style.marginTop = '16px';
+  panel.append(top, introduction);
   const selectionPreview = create('div', '', 'selection'); const selectionLabel = create('strong', '선택한 문장'); const selectionText = create('p', '정리하고 싶은 문장을 드래그해 주세요.'); selectionPreview.append(selectionLabel, selectionText); panel.append(selectionPreview);
   const selectedAction = create('button', '선택한 내용 가져오기 →', 'action primary'); selectedAction.type = 'button'; selectedAction.disabled = true; panel.append(selectedAction);
   const menuStatus = create('p', '', 'status'); menuStatus.setAttribute('role', 'status');
@@ -33,13 +34,72 @@
     try { const response = await chrome.runtime.sendMessage({ type: 'openWorkspace', payload: { view } }); if (!response?.ok) throw new Error(); closeMenu(); }
     catch { menuStatus.textContent = '확장 아이콘에서 다시 열어 주세요.'; }
   };
-  for (const [label, view] of [['PDF·이미지 / 텍스트 정리 ↗', 'analyze'], ['내 할 일 둘러보기 ↗', 'tasks'], ['사용 안내 ↗', 'settings']]) {
+  const uploadAction = create('button', 'PDF 업로드 ↗', 'action'); uploadAction.type = 'button'; uploadAction.onclick = () => openView('upload'); panel.append(uploadAction);
+  const captureAction = create('button', '화면 캡쳐하기 ▣', 'action'); captureAction.type = 'button';
+  captureAction.onclick = async () => {
+    captureAction.disabled = true;
+    try { const result = await chrome.runtime.sendMessage({ type: 'startCapture' }); if (!result?.ok) throw new Error(result?.error || '캡쳐를 시작하지 못했어요.'); closeMenu(); }
+    catch (error) { menuStatus.textContent = error.message; }
+    finally { captureAction.disabled = false; }
+  };
+  panel.append(captureAction);
+  for (const [label, view] of [['내 할 일 둘러보기 ↗', 'tasks'], ['사용 안내 ↗', 'settings']]) {
     const action = create('button', label, 'action'); action.type = 'button'; action.onclick = () => openView(view); panel.append(action);
   }
   const foot = create('div', '', 'foot'); foot.append(create('p', '드래그만으로 내용을 전송하지 않아요.'));
   const hideLauncher = create('button', '이 페이지에서 버튼 숨기기', 'hide'); hideLauncher.type = 'button'; foot.append(hideLauncher); panel.append(menuStatus, foot);
   const launcher = create('button', 'h.', 'bubble'); launcher.type = 'button'; launcher.setAttribute('aria-label', '해줌 도우미 열기'); launcher.setAttribute('aria-expanded', 'false'); launcher.setAttribute('aria-controls', panel.id); launcher.title = '해줌 도우미';
   wrap.append(panel, launcher); launcherShadow.append(launcherStyle, wrap); document.documentElement.append(launcherHost);
+  launcher.style.touchAction = 'none';
+  launcher.style.userSelect = 'none';
+  launcher.style.cursor = 'grab';
+  launcher.title = '해줌 도우미 · 끌어서 이동';
+  let drag = null; let suppressClick = false; let customPosition = false;
+  function placeMenu() {
+    if (panel.hidden) return;
+    const anchor = launcher.getBoundingClientRect();
+    panel.style.position = 'fixed'; panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    panel.style.maxHeight = `${Math.max(80, innerHeight - 24)}px`;
+    const size = panel.getBoundingClientRect();
+    const left = Math.max(12, Math.min(anchor.right - size.width, innerWidth - size.width - 12));
+    const top = anchor.top >= size.height + 24 ? anchor.top - size.height - 12 : Math.min(anchor.bottom + 12, innerHeight - size.height - 12);
+    panel.style.left = `${left}px`; panel.style.top = `${Math.max(12, top)}px`;
+  }
+  function moveLauncher(left, top) {
+    const size = launcher.getBoundingClientRect();
+    launcherHost.style.right = 'auto'; launcherHost.style.bottom = 'auto';
+    launcherHost.style.left = `${Math.max(8, Math.min(left, innerWidth - size.width - 8))}px`;
+    launcherHost.style.top = `${Math.max(8, Math.min(top, innerHeight - size.height - 8))}px`;
+    customPosition = true;
+  }
+  launcher.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    const rect = launcher.getBoundingClientRect();
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false };
+    suppressClick = false; launcher.setPointerCapture(event.pointerId); event.preventDefault();
+  });
+  launcher.addEventListener('pointermove', event => {
+    if (!drag || drag.id !== event.pointerId) return;
+    const deltaX = event.clientX - drag.x; const deltaY = event.clientY - drag.y;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < 6) return;
+    drag.moved = true; closeMenu(); launcher.style.cursor = 'grabbing';
+    moveLauncher(drag.left + deltaX, drag.top + deltaY);
+  });
+  const finishDrag = event => {
+    if (!drag || drag.id !== event.pointerId) return;
+    suppressClick = drag.moved; drag = null; launcher.style.cursor = 'grab';
+    if (launcher.hasPointerCapture(event.pointerId)) launcher.releasePointerCapture(event.pointerId);
+  };
+  launcher.addEventListener('pointerup', finishDrag);
+  launcher.addEventListener('pointercancel', finishDrag);
+  launcher.addEventListener('lostpointercapture', finishDrag);
+  launcher.addEventListener('keydown', event => {
+    if (event.altKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      event.preventDefault(); const rect = launcher.getBoundingClientRect();
+      moveLauncher(rect.left + (event.key === 'ArrowRight' ? 20 : event.key === 'ArrowLeft' ? -20 : 0), rect.top + (event.key === 'ArrowDown' ? 20 : event.key === 'ArrowUp' ? -20 : 0)); placeMenu();
+    }
+  });
+  window.addEventListener('resize', () => { if (customPosition) { const rect = launcher.getBoundingClientRect(); moveLauncher(rect.left, rect.top); } placeMenu(); }, { signal: controller.signal });
   function closeMenu() { panel.hidden = true; launcher.setAttribute('aria-expanded', 'false'); launcher.setAttribute('aria-label', '해줌 도우미 열기'); }
   function syncPreview() {
     selectedAction.disabled = !selectedText || selectedText.length > 45000;
@@ -47,7 +107,7 @@
     selectionText.textContent = selectedText ? selectedText.slice(0, 240) : '정리하고 싶은 문장을 드래그해 주세요.';
     menuStatus.textContent = selectedText.length > 45000 ? '45,000자 이내로 선택해 주세요.' : '';
   }
-  launcher.onclick = () => { syncPreview(); panel.hidden = !panel.hidden; launcher.setAttribute('aria-expanded', String(!panel.hidden)); launcher.setAttribute('aria-label', panel.hidden ? '해줌 도우미 열기' : '해줌 도우미 닫기'); };
+  launcher.onclick = event => { if (suppressClick && event.detail !== 0) { suppressClick = false; return; } suppressClick = false; syncPreview(); panel.hidden = !panel.hidden; launcher.setAttribute('aria-expanded', String(!panel.hidden)); launcher.setAttribute('aria-label', panel.hidden ? '해줌 도우미 열기' : '해줌 도우미 닫기'); placeMenu(); };
   dismiss.onclick = () => { closeMenu(); launcher.focus(); };
   hideLauncher.onclick = () => { closeMenu(); launcherHost.style.display = 'none'; };
   selectedAction.addEventListener('pointerdown', event => event.preventDefault());

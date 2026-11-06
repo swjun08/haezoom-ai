@@ -12,6 +12,7 @@ function route() {
   document.querySelectorAll('.view').forEach(view => { view.hidden = view.id !== target; });
   document.querySelectorAll('nav a').forEach(link => link.classList.toggle('active', link.hash === `#${target}`));
   if (target === 'tasks') renderItems();
+  if (location.hash === '#upload') { find('drop').scrollIntoView({ block: 'center' }); find('file').focus(); }
 }
 addEventListener('hashchange', route);
 const node = (tag, text, className) => { const element = document.createElement(tag); if (text !== undefined) element.textContent = text; if (className) element.className = className; return element; };
@@ -86,7 +87,16 @@ for (const type of ['dragenter', 'dragover']) find('drop').addEventListener(type
 for (const type of ['dragleave', 'drop']) find('drop').addEventListener(type, event => { event.preventDefault(); find('drop').classList.remove('dragging'); });
 find('drop').addEventListener('drop', event => readFile(event.dataTransfer.files[0]));
 if (globalThis.chrome?.storage?.session) {
-  const { pendingSelection } = await chrome.storage.session.get('pendingSelection');
+  const { pendingSelection, pendingCapture } = await chrome.storage.session.get(['pendingSelection', 'pendingCapture']);
   if (pendingSelection) { find('input-text').value = pendingSelection.text; source = pendingSelection.source; await chrome.storage.session.remove('pendingSelection'); notify(`‘${source?.title || '선택한 공지'}’ 내용을 가져왔어요. 개인정보와 선택 범위를 확인해 주세요. 외부 전송은 없습니다.`); }
+  if (pendingCapture) {
+    await chrome.storage.session.remove('pendingCapture'); source = pendingCapture.source;
+    const preview = node('section', undefined, 'panel');
+    preview.append(node('h2', '가져온 화면 캡쳐'), node('p', '이 이미지에서 글자를 읽어올 수 있어요. 외부 AI 전송은 없습니다.', 'privacy'));
+    const image = node('img'); image.src = pendingCapture.image; image.alt = '사용자가 선택한 캡쳐 영역'; image.style.cssText = 'max-width:100%;max-height:360px;object-fit:contain;border-radius:12px';
+    const read = node('button', '캡쳐한 글자 읽기', 'primary wide'); read.type = 'button';
+    read.onclick = async () => { read.disabled = true; try { const blob = await (await fetch(pendingCapture.image)).blob(); await readFile(new File([blob], '화면 캡쳐.png', { type: 'image/png' })); } finally { read.disabled = false; } };
+    preview.append(image, read); find('drop').before(preview); notify('선택한 영역을 가져왔어요. 이미지를 확인한 뒤 글자 읽기를 눌러 주세요.');
+  }
 }
 route();

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "해줌 AI — 공지를 내 할 일로",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "minimum_chrome_version": "120",
   "description": "공지와 문서에서 할 일을 정리하고, 확인한 일정만 저장·알림·캘린더로 연결합니다.",
   "permissions": ["activeTab", "scripting", "storage"],

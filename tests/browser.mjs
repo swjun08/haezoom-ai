@@ -61,6 +61,28 @@ try {
     await selectionPage.mouse.click((model.content[0] + model.content[4]) / 2, (model.content[1] + model.content[5]) / 2);
   };
   assert.ok(await buttonByName('해줌 도우미 열기'));
+  const launcherHost = selectionPage.locator('[data-haezoom-launcher]');
+  const initialPosition = await launcherHost.boundingBox();
+  await selectionPage.mouse.move(initialPosition.x + 28, initialPosition.y + 28);
+  await selectionPage.mouse.down();
+  await selectionPage.mouse.move(120, 100, { steps: 12 });
+  await selectionPage.mouse.up();
+  const movedPosition = await launcherHost.boundingBox();
+  assert.ok(movedPosition.x < initialPosition.x - 200);
+  assert.ok(movedPosition.y < initialPosition.y - 200);
+  assert.equal(await buttonByName('내 할 일 둘러보기 ↗'), undefined);
+  await clickClosedButton('해줌 도우미 열기');
+  const menuNode = (await cdp.send('Accessibility.getFullAXTree')).nodes.find(entry => entry.name?.value === '해줌 도우미 기능' && !entry.ignored);
+  const menuBox = (await cdp.send('DOM.getBoxModel', { backendNodeId: menuNode.backendDOMNodeId })).model.border;
+  assert.ok(menuBox[0] >= 0 && menuBox[1] >= 0 && menuBox[4] <= 1440 && menuBox[5] <= 1050);
+  await selectionPage.screenshot({ path: resolve(output, '07-draggable-menu.png'), fullPage: true });
+  await clickClosedButton('해줌 메뉴 닫기');
+  await selectionPage.mouse.move(movedPosition.x + 28, movedPosition.y + 28);
+  await selectionPage.mouse.down(); await selectionPage.mouse.move(2, 2, { steps: 8 }); await selectionPage.mouse.up();
+  const clampedPosition = await launcherHost.boundingBox(); assert.ok(clampedPosition.x >= 8 && clampedPosition.y >= 8);
+  await selectionPage.setViewportSize({ width: 390, height: 700 });
+  const resizedPosition = await launcherHost.boundingBox(); assert.ok(resizedPosition.x + resizedPosition.width <= 390 && resizedPosition.y + resizedPosition.height <= 700);
+  await selectionPage.setViewportSize({ width: 1440, height: 1050 });
   await clickClosedButton('해줌 도우미 열기');
   assert.ok(await buttonByName('선택한 내용 가져오기 →'));
   assert.equal(await selectionPage.evaluate(() => globalThis.lastMessage), undefined);
@@ -87,6 +109,28 @@ try {
   await clickClosedButton('해줌 도우미 열기');
   await clickClosedButton('이 페이지에서 버튼 숨기기');
   assert.equal(await selectionPage.locator('[data-haezoom-launcher]').isVisible(), false);
+  const frame = 'data:image/png;base64,' + (await selectionPage.screenshot()).toString('base64');
+  await selectionPage.evaluate(frame => {
+    globalThis.captureMessages = [];
+    chrome.runtime.sendMessage = async message => { globalThis.captureMessages.push(message); return message.type === 'captureViewport' ? { ok: true, data: frame } : { ok: true }; };
+  }, frame);
+  await selectionPage.addScriptTag({ content: await readFile(resolve(extension, 'capture.js'), 'utf8') });
+  await selectionPage.evaluate(() => globalThis.__haezoomStartCapture());
+  assert.equal(await selectionPage.locator('[data-haezoom-capture]').isVisible(), true);
+  await selectionPage.mouse.move(200, 200); await selectionPage.mouse.down();
+  await selectionPage.mouse.move(700, 450, { steps: 10 }); await selectionPage.mouse.up();
+  await clickClosedButton('이 영역 미리보기');
+  await selectionPage.screenshot({ path: resolve(output, '08-capture-preview.png'), fullPage: true });
+  assert.equal(await selectionPage.evaluate(() => captureMessages.filter(message => message.type === 'captureResult').length), 0);
+  await clickClosedButton('이 캡쳐 가져오기');
+  assert.equal(await selectionPage.locator('[data-haezoom-capture]').count(), 0);
+  const captureSize = await selectionPage.evaluate(async () => {
+    const image = new Image(); image.src = captureMessages.find(message => message.type === 'captureResult').payload.image; await image.decode(); return [image.naturalWidth, image.naturalHeight];
+  });
+  assert.deepEqual(captureSize, [500, 250]);
+  await selectionPage.evaluate(() => globalThis.__haezoomStartCapture());
+  await selectionPage.keyboard.press('Escape');
+  assert.equal(await selectionPage.locator('[data-haezoom-capture]').count(), 0);
   assert.deepEqual(errors, []);
   console.log('PASS: real unpacked extension load, samples, edit/confirm/complete/filter, responsive layout, reset, background selection handoff; helper DOM test (mock runtime): selection chip, no auto-send, click, private input exclusion.');
 } finally { await context.close(); }
