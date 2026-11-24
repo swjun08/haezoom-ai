@@ -8,7 +8,8 @@
     "check": "node scripts/check.mjs",
     "test:browser": "node tests/browser.mjs",
     "format": "prettier --write \"extension/*.{js,mjs,css,html}\" cloudflare-worker.js \"scripts/*.mjs\"",
-    "format:check": "prettier --check \"extension/*.{js,mjs,css,html}\" cloudflare-worker.js \"scripts/*.mjs\""
+    "format:check": "prettier --check \"extension/*.{js,mjs,css,html}\" cloudflare-worker.js \"scripts/*.mjs\"",
+    "package": "node scripts/package.mjs"
   },
   "engines": {
     "node": ">=22"
