@@ -1,0 +1,687 @@
+/* 3.1 화면 정리
+   - 버튼: 주 버튼 40px(검정), 보조 버튼 40px(흰 바탕 + 테두리), 작은 버튼 34px, 아이콘 버튼 36px로 통일
+   - 사이드바: 아이콘 + 15px 글자, 선택한 메뉴는 흰 카드
+   - 목록: 날짜를 '11월 27일 (금)'과 남은 기간(D-3·오늘 마감·2일 지남)으로 표시, 줄 전체를 눌러 상세 열기
+   - 상세 창: 핵심 정보 → 할 수 있는 일(버튼 한 줄) → 수정 → 메모 → 근거 순서 */
+:root {
+  --ink: #191c23;
+  --muted: #69717e;
+  --faint: #9aa1ab;
+  --line: #e5e8ed;
+  --bg: #f5f6f8;
+  --task: #2f62a8;
+  --task-bg: #ebf2fc;
+  --schedule: #22735a;
+  --schedule-bg: #e6f3ed;
+  --overdue: #bf3a22;
+  --overdue-bg: #fdece8;
+  --soon: #94570a;
+  --soon-bg: #fff2da;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ── 버튼 ─────────────────────────────── */
+.primary,
+.secondary,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.primary,
+.button-link.primary {
+  background: var(--ink);
+  color: #fff;
+}
+.secondary {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.secondary:hover {
+  background: #f7f8fa;
+  filter: none;
+}
+.small,
+.primary.small,
+.secondary.small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.icon-button,
+.secondary.icon-button {
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 22px;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+}
+.close-button {
+  background: transparent;
+  color: var(--muted);
+  font-size: 26px;
+  font-weight: 400;
+}
+.close-button:hover {
+  background: #f1f3f5;
+  filter: none;
+}
+.quiet-button {
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.quiet-button:hover {
+  background: #f1f3f5;
+  filter: none;
+}
+.quiet-danger {
+  background: transparent;
+  color: #b3261e;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.quiet-danger:hover {
+  background: #fdecea;
+  filter: none;
+}
+
+/* ── 사이드바 ─────────────────────────── */
+aside {
+  width: 224px;
+  padding: 28px 16px 24px;
+}
+.workspace {
+  margin-left: 224px;
+  width: calc(100% - 224px);
+  padding: 30px 40px 28px;
+}
+aside .brand {
+  padding: 0 10px;
+}
+aside nav {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+nav a,
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #4a515d;
+}
+nav a:hover,
+.settings-link:hover {
+  background: #eceef2;
+}
+nav a.active,
+.settings-link.active {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: 0 1px 3px #191c2314;
+}
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+nav a span.nav-text,
+.settings-link .nav-text {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+nav a #nav-count {
+  margin-left: auto;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 99px;
+  background: #e5e8ed;
+  color: #4a515d;
+  font-size: 12px;
+  font-weight: 650;
+  display: inline-grid;
+  place-items: center;
+}
+nav a.active #nav-count {
+  background: var(--ink);
+  color: #fff;
+}
+.sidebar-bottom {
+  font-size: inherit;
+  color: inherit;
+  gap: 0;
+}
+
+/* ── 화면 제목 ─────────────────────────── */
+.view-heading {
+  padding: 4px 0 22px;
+  min-height: 64px;
+}
+h1 {
+  font-size: 28px;
+}
+.overline {
+  font-size: 13px;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+}
+
+/* ── 목록 줄 ──────────────────────────── */
+.task-card {
+  padding: 14px 12px;
+  margin: 0 -12px;
+  border-radius: 12px;
+  border-bottom: 0;
+  position: relative;
+}
+.task-card + .task-card::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  border-top: 1px solid #eef0f3;
+}
+.task-card.clickable {
+  cursor: pointer;
+}
+.task-card.clickable:hover {
+  background: #f7f8fa;
+}
+.task-card.clickable:hover + .task-card::before,
+.task-card.clickable:hover::before {
+  border-color: transparent;
+}
+.task-card .row {
+  align-items: center;
+  gap: 12px;
+}
+.task-card h3 {
+  font-size: 15px;
+  font-weight: 620;
+  flex: 1;
+  min-width: 0;
+}
+.task-card .complete-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-width: 1.8px;
+}
+.task-card .complete-button:hover {
+  border-color: #1c705a;
+  background: #eef7f3;
+}
+.task-card .item-meta {
+  margin: 6px 0 0 36px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.task-card .item-meta .date-label {
+  font-size: 13px;
+  color: #4a515d;
+}
+.task-card .item-meta .date-label.overdue {
+  color: var(--overdue);
+}
+.due-chip {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #eef0f3;
+  color: #4a515d;
+}
+.due-chip.soon {
+  background: var(--soon-bg);
+  color: var(--soon);
+}
+.due-chip.today {
+  background: var(--ink);
+  color: #fff;
+}
+.due-chip.overdue {
+  background: var(--overdue-bg);
+  color: var(--overdue);
+}
+.task-card .item-meta .badge {
+  font-size: 12px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--soon-bg);
+  color: var(--soon);
+}
+.item-preview {
+  margin: 6px 0 0 36px;
+  font-size: 13px;
+  color: #6f7783;
+}
+.task-card .kind-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+}
+.kind-tag.task {
+  color: var(--task);
+  background: var(--task-bg);
+}
+.kind-tag.schedule {
+  color: var(--schedule);
+  background: var(--schedule-bg);
+}
+/* 목록의 '보기'는 화살표 아이콘, 확인이 필요한 항목만 글자 버튼 */
+.task-card .open-item {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  position: relative;
+}
+.task-card .open-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: translateX(-2px) rotate(45deg);
+}
+.task-card.clickable:hover .open-item {
+  color: var(--ink);
+}
+.task-card .open-item.review-action {
+  width: auto;
+  padding: 0 12px;
+  background: var(--soon-bg);
+  color: var(--soon);
+  font-size: 13px;
+  font-weight: 650;
+}
+.task-card .open-item.review-action::after {
+  display: none;
+}
+.task-card.done h3 {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* ── 오늘 화면 ─────────────────────────── */
+.focus-panel,
+.home-calendar,
+.collection-panel {
+  border-radius: 18px;
+}
+.focus-panel .panel-heading h2,
+.home-calendar .panel-heading h2 {
+  font-size: 18px;
+}
+#home-description {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.focus-panel .priority-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #4a515d;
+  border-bottom: 0;
+  margin: 22px 0 4px;
+  padding: 0;
+}
+.focus-panel .priority-group:first-child {
+  margin-top: 4px;
+}
+.priority-group .count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: #eef0f3;
+  font-size: 11px;
+  display: inline-grid;
+  place-items: center;
+}
+.priority-group.overdue {
+  color: var(--overdue);
+}
+.priority-group.overdue .count {
+  background: var(--overdue-bg);
+}
+.priority-group.review {
+  color: var(--soon);
+}
+.priority-group.review .count {
+  background: var(--soon-bg);
+}
+.more-link {
+  display: block;
+  margin: 8px 0 0;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.more-link:hover {
+  color: var(--ink);
+}
+.list-footer {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mini-day {
+  font-size: 13px;
+}
+.home-agenda h3 {
+  font-size: 15px;
+}
+.agenda-item {
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+}
+.agenda-item:hover {
+  background: #f5f6f8;
+  filter: none;
+}
+.agenda-item strong {
+  font-size: 14px;
+}
+.add-on-day {
+  width: 100%;
+  margin-top: 12px;
+}
+#home-reminders {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f5f6f8;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a515d;
+  text-align: center;
+}
+#home-reminders:hover {
+  background: #eceef2;
+}
+
+/* ── 할 일·일정 목록 도구 ───────────────── */
+.collection-toolbar {
+  gap: 12px;
+}
+.segmented button {
+  min-height: 36px;
+  font-size: 14px;
+}
+.list-tools input,
+.list-tools select {
+  height: 40px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+.list-summary {
+  font-size: 13px;
+}
+
+/* ── 캘린더 ───────────────────────────── */
+.calendar-toolbar {
+  gap: 8px;
+}
+.calendar-toolbar h2 {
+  font-size: 20px;
+  min-width: 120px;
+  text-align: center;
+}
+.calendar-toolbar #today {
+  margin-left: auto;
+}
+.calendar-item {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+}
+.calendar-item .chip-time {
+  flex-shrink: 0;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.calendar-item .chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#calendar-review:not(:empty) {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--soon-bg);
+  color: var(--soon);
+  font-size: 13px;
+}
+
+/* ── 상세 창 ──────────────────────────── */
+dialog {
+  border-radius: 20px;
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dialog-heading h2 {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+#item-dialog {
+  width: min(640px, calc(100vw - 32px));
+  padding: 20px 28px 28px;
+}
+#item-dialog .task-card {
+  margin: 0;
+  padding: 0;
+}
+#item-dialog .task-card h3 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+#item-dialog .task-card .row {
+  align-items: flex-start;
+}
+#item-dialog .task-card .complete-button {
+  margin-top: 5px;
+}
+#item-dialog .item-meta {
+  margin: 10px 0 0 36px;
+}
+#item-dialog .item-facts {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f7f8fa;
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+#item-dialog .item-expansion > .item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+.actions-spacer {
+  flex: 1;
+}
+#item-dialog .edit-form:not([hidden]) {
+  margin-top: 16px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+#item-dialog .item-memo {
+  margin: 22px 0 0;
+  padding-top: 20px;
+}
+#item-dialog .item-expansion > details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+#item-dialog .item-expansion > details summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+.memo-actions button {
+  min-height: 36px;
+  font-size: 13px;
+}
+
+/* 분석 결과(공지 가져오기 화면)도 같은 버튼 체계 */
+#draft-list .task-card .item-expansion > .item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.save-area .primary,
+#run {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+/* 알림 창(토스트) */
+#undo-toast {
+  border-radius: 12px;
+  padding: 10px 10px 10px 18px;
+  gap: 12px;
+  font-size: 14px;
+}
+#undo-action {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  aside {
+    width: auto;
+    padding: 16px;
+  }
+  .workspace {
+    margin: 0;
+    width: 100%;
+    padding: 16px;
+  }
+  aside nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  nav a {
+    min-height: 38px;
+    font-size: 13px;
+    gap: 6px;
+    padding: 0 10px;
+  }
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+  }
+  #item-dialog {
+    padding: 16px 18px 22px;
+  }
+  #item-dialog .task-card h3 {
+    font-size: 19px;
+  }
+}
+
+/* 보정: 이전 스타일과 겹치는 부분 */
+nav a,
+.settings-link {
+  justify-content: flex-start;
+}
+.task-card .item-meta {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.task-card .item-meta > span {
+  flex-shrink: 0;
+}
+.task-card .item-meta .item-preview {
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: #7a828e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-card .item-meta .item-preview::before {
+  content: '·';
+  margin: 0 6px 0 0;
+  color: #c2c7cf;
+}
+#item-dialog .kind-tag {
+  display: none;
+}
+#item-dialog .task-card .row {
+  border: 0;
+  padding: 0;
+}
+#item-dialog .item-meta .item-preview {
+  display: none;
+}

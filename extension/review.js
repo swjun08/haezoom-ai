@@ -12,6 +12,14 @@
     if (className) element.className = className;
     return element;
   };
+  const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  /** 2026-11-27 → 11월 27일 (금) */
+  const readableDate = iso => {
+    const d = new Date(iso + 'T12:00:00Z');
+    if (Number.isNaN(d.getTime())) return iso;
+    const thisYear = new Date().getFullYear() === d.getUTCFullYear();
+    return `${thisYear ? '' : d.getUTCFullYear() + '년 '}${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEKDAYS[d.getUTCDay()]})`;
+  };
   globalThis.__haezoomShowReview = ({ image, text: initialText = '', pdf = false }) => {
     closeCurrent();
     const demoMission = document.querySelector('meta[name="haezoom-demo"]')?.content;
@@ -61,12 +69,13 @@
     panel.setAttribute('aria-modal', 'true');
     panel.setAttribute('aria-label', pdf ? 'PDF 가져오기' : image ? '캡쳐한 내용 확인' : '선택한 내용 확인');
     const header = create('header');
-    header.append(create('strong', 'h.  해줌 AI', 'brand'));
+    const brand = create('strong', '', 'brand');
+    brand.append(create('span', 'h.', 'brand-mark'), document.createTextNode('해줌 AI'));
+    header.append(brand);
     const exit = create('button', '×', 'close');
     exit.setAttribute('aria-label', '확인 창 닫기');
     exit.onclick = cleanup;
-    const workspace = create('button', '내 할 일 · 일정');
-    workspace.style.cssText = 'margin-left:auto;margin-right:12px;background:none;font-size:12px;color:#68717f';
+    const workspace = create('button', '내 할 일 · 일정', 'header-link');
     workspace.onclick = () => chrome.runtime.sendMessage({ type: 'openWorkspace', payload: { view: 'home' } });
     header.append(workspace, exit);
     const body = create('main');
@@ -211,7 +220,7 @@
           open.append(
             create('span', item.kind === 'task' ? '할 일' : '일정', 'result-kind ' + item.kind),
             create('strong', item.title),
-            create('small', date || '날짜 확인 필요', date ? '' : 'uncertain'),
+            create('small', date ? readableDate(date) : '날짜 확인 필요', date ? '' : 'uncertain'),
           );
           open.onclick = () => {
             active = item;
@@ -398,11 +407,10 @@
         status.textContent = '원문은 45,000자 이내여야 해요.';
         return;
       }
-      const consent = image
-        ? '선택한 이미지와 메모를 해줌 서버를 거쳐 Claude에 보내 분석합니다. 전송할까요?'
-        : '선택한 문장을 해줌 서버를 거쳐 Claude에 보내 분석합니다. 전송할까요?';
-      if (!confirm(consent)) return;
+      // 버튼 옆에 전송 안내를 늘 보여 주므로, 버튼을 누르는 것이 전송 동의입니다(별도 확인 창 없음).
       analyze.disabled = true;
+      analyze.textContent = '정리하는 중…';
+      panel.setAttribute('aria-busy', 'true');
       text.disabled = true;
       mediaControls.forEach(x => (x.disabled = true));
       status.textContent = image ? '선택한 페이지를 분석하고 있어요.' : '원문을 전송하고 분석하고 있어요.';
@@ -421,6 +429,8 @@
           : `분석에 실패했어요. ${error.message}`;
       } finally {
         analyze.disabled = false;
+        analyze.textContent = '할 일 정리하기';
+        panel.removeAttribute('aria-busy');
         text.disabled = false;
         if (mediaControls.length) {
           mediaControls[0].disabled = false;
@@ -434,12 +444,19 @@
       resultTab.disabled = true;
       selectTab(false);
     });
-    const editActions = create('div', '', 'actions');
-    editActions.append(copy, analyze);
+    const editActions = create('div', '', 'actions edit-footer');
+    const disclosure = create(
+      'span',
+      image || pdf
+        ? '누르면 이 이미지가 해줌 서버를 거쳐 AI(Claude)로 전송돼요.'
+        : '누르면 이 내용이 해줌 서버를 거쳐 AI(Claude)로 전송돼요.',
+      'send-note',
+    );
+    editActions.append(disclosure, copy, analyze);
     if (image || pdf) {
       const memo = create('details', '', 'optional-memo');
       memo.append(create('summary', '분석 요청 추가'), label, text);
-      editActions.replaceChildren(analyze);
+      editActions.replaceChildren(disclosure, analyze);
       editor.append(memo, editActions);
       columns.classList.add('media-mode');
     } else editor.append(label, text, editActions);
@@ -572,6 +589,33 @@
     mediaStyle.textContent =
       '.columns.media-mode{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:12px}.media-mode>.pane:last-child{flex-direction:row;align-items:center;justify-content:space-between;gap:16px}.optional-memo{flex:1;margin:0!important}.optional-memo summary{font-size:12px;color:#707784}.optional-memo textarea{display:block;height:70px;min-height:70px;max-height:90px;margin-top:6px}.optional-memo label{display:none}.media-mode .actions{justify-content:flex-end}.pdf-picker{position:relative;border:1px dashed #d8dde5;background:#f7f8fa;border-radius:18px;min-height:180px;display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer}.pdf-picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.pdf-picker strong{font-size:17px}.pdf-picker span{font-size:12px;color:#7a8290}.pdf-picker.loaded{min-height:38px;flex:0;padding:8px 12px;align-items:flex-start;border-style:solid;background:white}.pdf-picker.loaded strong{font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pdf-picker.loaded span{display:none}.pdf-picker:focus-within{outline:2px solid #2298ff;outline-offset:2px}.review{width:min(900px,calc(100vw - 32px))}.image-pane>.actions{justify-content:center;font-size:12px}.image-pane>.actions button{padding:5px 10px;font-size:11px}.review header .brand{display:flex;align-items:center;gap:10px}.review .image-heading{flex-shrink:0}.media-mode>.image-pane{min-height:0}.review main>h2{margin-bottom:2px}';
     shadow.append(mediaStyle);
+    const polishStyle = create('style');
+    // 3.1 화면 정리: 주 버튼은 항상 오른쪽 아래, 단계 표시는 작게, 버튼 크기 통일
+    polishStyle.textContent = `
+.review:focus{outline:0}
+.review header{padding:18px 24px 6px}
+.brand{display:flex;align-items:center;gap:9px;font-size:16px}
+.brand-mark{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#14171f;color:#fff;font-size:14px;font-weight:800;letter-spacing:-.04em}
+.header-link{margin-left:auto;margin-right:6px;background:#fff!important;box-shadow:inset 0 0 0 1px #e3e6eb;font-size:13px;min-height:34px;padding:0 12px;color:#3d4450;border-radius:9px}
+.close{width:38px;height:38px;font-size:26px;font-weight:400}
+.close:hover{background:#f1f3f5!important}
+.review main>h2{font-size:20px;margin:0}
+.review-tabs{align-self:flex-start;padding:3px;gap:2px}
+.review-tabs button{flex:none;font-size:13px;padding:7px 16px;min-height:32px}
+.review-tabs button:disabled{opacity:.5}
+button{min-height:40px;padding:0 16px;font-size:14px;border-radius:10px}
+.primary{border-radius:10px!important}
+.edit-footer,.result-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;padding-top:4px}
+.edit-footer .send-note{margin-right:auto;font-size:12px;color:#7a8290}
+.edit-footer .primary,.result-footer .primary{min-height:44px;padding:0 24px;font-size:15px}
+.columns.text-only textarea{flex:1;min-height:120px}
+.result-item small{font-size:12px}
+.result-detail .result-facts dt{font-size:12px}
+.save-success .actions{justify-content:center}
+.save-success .actions button{min-height:44px;padding:0 20px}
+@media(max-width:640px){.edit-footer{flex-wrap:wrap}.edit-footer .send-note{width:100%}.header-link{display:none}}
+`;
+    shadow.append(polishStyle);
     panel.append(header, body, zoom);
     backdrop.append(panel);
     shadow.prepend(style);
@@ -599,7 +643,8 @@
       },
       { capture: true, signal: controller.signal },
     );
-    exit.focus();
+    panel.tabIndex = -1;
+    panel.focus({ preventScroll: true });
   };
   const listener = (message, sender, reply) => {
     if (sender.id !== chrome.runtime.id) return false;
