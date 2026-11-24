@@ -7,3 +7,7 @@ playwright-report/
 test-results/
 *.zip
 .DS_Store
+
+# 확장 서명 개인 키 (절대 커밋 금지)
+*.pem
+keys/

@@ -1,12 +1,358 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>해줌 AI</title><link rel="stylesheet" href="ui.css"><link rel="stylesheet" href="service.css"><link rel="stylesheet" href="workspace-v3.css"><script type="module" src="workspace.js"></script></head>
-<body><div class="app-frame"><aside><a class="brand" href="#home"><span class="logo">h.</span>해줌 AI</a><nav aria-label="주요 메뉴"><a href="#home">오늘</a><a href="#tasks">할 일 · 일정 <span id="nav-count">0</span></a><a href="#calendar">캘린더</a><a href="#analyze">공지 가져오기</a></nav><div class="sidebar-bottom"><a href="#settings">알림 · 연결 설정</a><small>해줌 AI</small></div></aside>
-<main class="workspace"><header class="page-header"><span id="page-label">오늘</span><a href="#settings" id="connection-label">알림 · 연결</a></header><div id="status" role="status" aria-live="polite"></div>
-<section id="home" class="view"><div class="view-heading"><div><p id="home-date" class="overline"></p><h1>오늘을 가볍게.</h1></div><a href="#analyze" class="button-link primary">공지 가져오기</a></div><div class="home-layout"><section class="focus-panel"><div class="panel-heading"><div><h2>먼저 확인할 일</h2><p id="home-description"></p></div><button id="home-add" class="quiet-button">직접 추가</button></div><div id="home-review"></div><div id="home-list"></div><a href="#tasks" class="list-footer">모든 할 일 · 일정 보기</a></section><section class="home-calendar"><div class="panel-heading"><h2 id="mini-month"></h2><a href="#calendar">전체 달력</a></div><div id="mini-calendar"></div><div class="home-agenda"><h3 id="home-agenda-title">다가오는 일정</h3><div id="home-events"></div></div><a href="#settings" id="home-reminders" class="reminder-link">Chrome 알림 설정</a></section></div></section>
-<section id="tasks" class="view" hidden><div class="view-heading"><div><p class="overline">MY LIST</p><h1>할 일 · 일정</h1></div><div class="heading-actions"><button id="new-item" class="secondary">직접 추가</button><a href="#analyze" class="button-link primary">공지 가져오기</a></div></div><div class="collection-panel"><div class="collection-toolbar"><div id="kind-filters" class="segmented" aria-label="항목 종류"><button data-kind="task" aria-pressed="true">할 일</button><button data-kind="schedule" aria-pressed="false">일정</button></div><div class="list-tools"><input id="search" type="search" aria-label="할 일 검색" placeholder="검색"><select id="status-filter" aria-label="상태 필터"><option value="pending">진행 중</option><option value="review">확인 필요</option><option value="completed">완료</option><option value="all">전체</option></select><select id="sort" aria-label="정렬"><option value="date">날짜순</option><option value="recent">최근순</option></select></div></div><div id="task-stats" class="list-summary"></div><div id="task-list"></div></div></section>
-<section id="calendar" class="view" hidden><div class="view-heading"><div><p class="overline">MY CALENDAR</p><h1>캘린더</h1></div><button id="sync-calendar" class="secondary">Google에 등록</button></div><div class="calendar-meta"><span><i class="legend-task"></i>할 일 마감 <i class="legend-schedule"></i>참석 일정</span><a href="#settings" id="calendar-state">Google 연결 설정</a></div><div class="calendar-toolbar"><button id="previous-month" class="secondary" aria-label="이전 달">이전</button><h2 id="month-title"></h2><button id="next-month" class="secondary" aria-label="다음 달">다음</button><button id="today" class="secondary">오늘</button></div><div class="calendar-layout"><div id="calendar-grid" class="calendar-grid" aria-label="월별 일정"></div><section class="day-panel"><h2 id="day-title"></h2><div id="day-items"></div></section></div><div id="calendar-review" class="notice"></div></section>
-<section id="analyze" class="view" hidden><div class="view-heading"><div><p class="overline">공지에서 할 일로</p><h1>공지 가져오기</h1></div><ol class="flow-steps" aria-label="진행 단계"><li id="step-input" class="current">1 가져오기</li><li id="step-review">2 확인하기</li><li>3 저장하기</li></ol></div><div class="import-layout"><section class="panel input-panel"><div class="panel-heading"><h2>어떤 공지를 정리할까요?</h2><button id="sample" class="quiet-button">예시 보기</button></div><div class="segmented input-tabs"><button id="text-mode" aria-pressed="true">텍스트</button><button id="file-mode" aria-pressed="false">PDF · 이미지</button></div><div id="file-area" hidden><label class="drop" id="drop"><strong>파일을 선택하거나 여기에 놓으세요</strong><span>PDF 20MB · 30쪽 / 이미지 5MB</span><input id="file" type="file" aria-label="PDF 또는 이미지 업로드" accept="application/pdf,image/png,image/jpeg,image/webp"></label><p id="file-status" class="muted" role="status"></p><div id="file-card" class="selected-file" hidden><span class="selected-file-icon"></span><div class="selected-file-copy"><strong class="selected-file-name"></strong><span class="selected-file-meta"></span></div><button id="remove-file" class="selected-file-remove" aria-label="선택한 파일 제거">삭제</button></div><div id="pdf-options" hidden><label for="pdf-page">분석할 페이지</label><select id="pdf-page"><option value="all">전체</option></select><p class="tiny muted">여러 공지가 묶여 있다면 필요한 페이지부터 정리하세요.</p></div></div><label for="input-text" id="input-label">공지 내용</label><textarea id="input-text" maxlength="45000" placeholder="학교 공지나 수업 안내를 붙여 넣으세요."></textarea><div class="input-bottom"><p>원문은 분석에 동의한 후에만 전송해요.</p><button id="run" class="primary">AI로 정리하기</button></div></section><section class="panel result-panel"><div class="panel-heading"><h2>분류와 날짜를 확인해 주세요</h2></div><div id="result-empty" class="empty"><h3>할 일과 일정으로 나눠드려요</h3><div class="explain-types"><div><span class="kind-tag task">할 일</span><p>신청서 제출 · 준비물 챙기기</p></div><div><span class="kind-tag schedule">일정</span><p>체험학습 · 수업 · 회의 참석</p></div></div></div><div id="analysis-result" hidden><span id="sample-badge" class="badge" hidden>미리 작성된 예시</span><p id="summary"></p><div id="draft-list"></div><div class="save-area"><p id="save-hint">필요한 항목을 선택해 저장하세요.</p><button id="save" class="primary" disabled>선택한 항목 저장</button></div></div></section></div></section>
-<section id="settings" class="view" hidden><div class="view-heading"><div><p class="overline">PREFERENCES</p><h1>알림 · 연결 설정</h1></div></div><div class="settings-grid"><section class="panel settings-panel"><h2>Chrome 알림</h2><p>Google 연결 없이 마감과 일정을 알려드려요.</p><form id="reminder-form"><label class="toggle-row"><span>Chrome 알림 받기</span><input id="reminders-enabled" type="checkbox" role="switch"></label><fieldset><legend>마감 · 일정 알림</legend><label><input type="checkbox" name="reminder-day" value="3" checked>3일 전</label><label><input type="checkbox" name="reminder-day" value="1" checked>하루 전</label><label><input type="checkbox" name="reminder-day" value="0" checked>당일</label></fieldset><label>알림 시간 <select id="reminder-hour" aria-label="알림 시간"></select><span class="tiny muted"> 한국 시간</span></label><label class="toggle-row"><span>일정 시작 30분 전에도 알림</span><input id="event-reminder" type="checkbox" checked></label><div class="actions"><button class="primary">설정 저장</button><button id="test-notification" type="button" class="secondary">알림 확인</button></div></form><p id="notification-help" class="tiny muted">Chrome이 열려 있을 때 알림을 받습니다. 24시간 이내 놓친 알림은 다시 열면 확인할 수 있어요.</p></section><section class="panel settings-panel"><h2>Google 캘린더 <span class="optional">선택</span></h2><p id="google-state"></p><button id="connect-calendar" class="secondary">Google 캘린더 연결</button><p class="tiny muted">원하는 항목만 Google에도 등록할 수 있어요. 해줌에서 완료해도 Google 일정은 유지돼요.</p><details><summary>연결 문제 해결</summary><p>관리자에게 확장 ID를 전달해 Google OAuth 설정을 확인해 주세요.</p><code id="extension-id"></code></details></section><details class="panel settings-panel secondary-settings"><summary>해줌 버튼 표시</summary><p>웹페이지 오른쪽 아래에서 바로 공지를 가져올 수 있어요.</p><button id="global-helper" class="secondary">표시 설정 확인 중</button><p class="tiny muted">Chrome 설정과 웹스토어 등 제한된 페이지에서는 사용할 수 없어요.</p></details><details class="panel settings-panel secondary-settings"><summary>데이터 백업</summary><p>할 일과 일정은 이 Chrome 프로필에 저장됩니다.</p><div class="actions"><button id="export-json" class="secondary">내려받기</button><button id="import-json" class="secondary">가져오기</button><input id="backup-file" type="file" accept="application/json,.json" hidden></div></details><details class="panel settings-panel secondary-settings"><summary>사용 방법 · 개인정보</summary><ol><li>웹페이지의 해줌 버튼에서 공지를 가져옵니다.</li><li>할 일·일정과 날짜를 확인하고 저장합니다.</li><li>오늘 화면에서 확인하고 완료합니다.</li></ol><p>분석할 때 선택한 원문·파일을 해줌 서버를 거쳐 Claude에 전송합니다. 날짜를 확인한 미완료 항목에만 알림을 보냅니다.</p></details></div></section>
-</main></div>
-<div id="undo-toast" role="status" aria-live="polite" hidden><span id="undo-message"></span><button id="undo-action" type="button">실행 취소</button><button id="undo-dismiss" type="button" aria-label="알림 닫기">닫기</button></div><dialog id="manual-dialog"><div class="dialog-heading"><h2>직접 추가</h2><button id="close-manual" type="button" class="quiet-button">닫기</button></div><form id="manual" class="manual"><label>종류<select id="manual-kind" aria-label="새 항목 종류"><option value="task">할 일</option><option value="schedule">일정</option></select></label><label>제목<input id="manual-title" aria-label="새 할 일 제목" placeholder="무엇을 해야 하나요?" required maxlength="500"></label><label>날짜<input id="manual-date" aria-label="새 할 일 마감일" type="date"></label><label>메모 <span class="muted">선택</span><textarea id="manual-notes" aria-label="새 항목 메모" maxlength="5000" rows="3" placeholder="기억할 내용이나 준비 상황을 적어 주세요."></textarea></label><button class="primary">추가</button></form></dialog>
-<dialog id="item-dialog"><div class="dialog-heading"><h2>내용 확인</h2><button type="button" id="close-item" class="quiet-button" aria-label="상세 닫기">닫기</button></div><div id="item-detail"></div></dialog><dialog id="confirm-dialog"><form method="dialog"><h2 id="confirm-title"></h2><p id="confirm-copy"></p><div class="actions"><button value="cancel" class="secondary">취소</button><button value="yes" class="primary" id="confirm-yes">확인</button></div></form></dialog>
-</body></html>
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>해줌 AI</title>
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="service.css" />
+    <link rel="stylesheet" href="workspace-v3.css" />
+    <link rel="stylesheet" href="workspace-v4.css" />
+    <script src="date-hints.js"></script>
+    <script type="module" src="workspace.js"></script>
+  </head>
+  <body>
+    <div class="app-frame">
+      <aside>
+        <a class="brand" href="#home"><span class="logo">h.</span>해줌 AI</a>
+        <nav aria-label="주요 메뉴">
+          <a href="#home"
+            ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"
+              /></svg
+            ><span class="nav-text">오늘</span></a
+          >
+          <a href="#tasks"
+            ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="4" width="17" height="16" rx="3" />
+              <path d="m7.5 9 1.5 1.5L12 7.5M7.5 15h9" /></svg
+            ><span class="nav-text">할 일 · 일정</span><span id="nav-count">0</span></a
+          >
+          <a href="#calendar"
+            ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="5" width="17" height="15" rx="3" />
+              <path d="M3.5 10h17M8 3v4M16 3v4" /></svg
+            ><span class="nav-text">캘린더</span></a
+          >
+          <a href="#analyze"
+            ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4v10m0 0-4-4m4 4 4-4" />
+              <path d="M4.5 15v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15" /></svg
+            ><span class="nav-text">공지 가져오기</span></a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <a href="#settings" class="settings-link"
+            ><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+              /></svg
+            ><span class="nav-text">알림 · 연결 설정</span></a
+          >
+        </div>
+      </aside>
+      <main class="workspace">
+        <header class="page-header">
+          <span id="page-label">오늘</span><a href="#settings" id="connection-label">알림 · 연결</a>
+        </header>
+        <div id="status" role="status" aria-live="polite"></div>
+        <section id="home" class="view">
+          <div class="view-heading">
+            <div>
+              <h1 id="home-date">오늘</h1>
+            </div>
+            <a href="#analyze" class="button-link primary">공지 가져오기</a>
+          </div>
+          <div class="home-layout">
+            <section class="focus-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>할 일</h2>
+                  <p id="home-description" hidden></p>
+                </div>
+                <button id="home-add" class="secondary small">+ 직접 추가</button>
+              </div>
+              <div id="home-review"></div>
+              <div id="home-list"></div>
+            </section>
+            <section class="home-calendar">
+              <div class="panel-heading">
+                <h2 id="mini-month"></h2>
+              </div>
+              <div id="mini-calendar"></div>
+              <div class="home-agenda">
+                <h3 id="home-agenda-title">다가오는 일정</h3>
+                <div id="home-events"></div>
+              </div>
+              <a href="#settings" id="home-reminders" class="reminder-link" hidden>알림 켜기</a>
+            </section>
+          </div>
+        </section>
+        <section id="tasks" class="view" hidden>
+          <div class="view-heading">
+            <div>
+              <h1>할 일 · 일정</h1>
+            </div>
+            <div class="heading-actions">
+              <button id="new-item" class="secondary">+ 직접 추가</button
+              ><a href="#analyze" class="button-link primary">공지 가져오기</a>
+            </div>
+          </div>
+          <div class="collection-panel">
+            <div class="collection-toolbar">
+              <div id="kind-filters" class="segmented" aria-label="항목 종류">
+                <button data-kind="all" aria-pressed="true">전체</button
+                ><button data-kind="task" aria-pressed="false">할 일</button
+                ><button data-kind="schedule" aria-pressed="false">일정</button>
+              </div>
+              <div class="list-tools">
+                <input id="search" type="search" aria-label="할 일 검색" placeholder="검색" /><select
+                  id="status-filter"
+                  aria-label="상태 필터"
+                >
+                  <option value="pending">진행 중</option>
+                  <option value="review">확인 필요</option>
+                  <option value="completed">완료</option>
+                  <option value="all">전체</option></select
+                ><select id="sort" aria-label="정렬">
+                  <option value="date">날짜순</option>
+                  <option value="recent">최근순</option>
+                </select>
+              </div>
+            </div>
+            <div id="task-stats" class="list-summary"></div>
+            <div id="task-list"></div>
+          </div>
+        </section>
+        <section id="calendar" class="view" hidden>
+          <div class="view-heading">
+            <div>
+              <h1>캘린더</h1>
+            </div>
+            <details class="menu" id="export-menu">
+              <summary class="secondary">캘린더로 내보내기</summary>
+              <div class="menu-panel">
+                <button id="export-ics" class="menu-item">캘린더 파일 받기</button>
+                <button id="sync-calendar" class="menu-item">Google에 등록</button>
+                <a href="#settings" id="calendar-state" class="menu-note">Google 연결 설정</a>
+              </div>
+            </details>
+          </div>
+          <div class="calendar-toolbar">
+            <button id="previous-month" class="secondary icon-button" aria-label="이전 달">‹</button>
+            <h2 id="month-title"></h2>
+            <button id="next-month" class="secondary icon-button" aria-label="다음 달">›</button>
+            <span class="legend"><i class="legend-task"></i>할 일 <i class="legend-schedule"></i>일정</span
+            ><button id="today" class="secondary">오늘</button>
+          </div>
+          <div class="calendar-layout">
+            <div id="calendar-grid" class="calendar-grid" aria-label="월별 일정"></div>
+            <section class="day-panel">
+              <h2 id="day-title"></h2>
+              <div id="day-items"></div>
+            </section>
+          </div>
+          <div id="calendar-review" class="notice"></div>
+        </section>
+        <section id="analyze" class="view" hidden>
+          <div class="view-heading">
+            <div>
+              <h1>공지 가져오기</h1>
+            </div>
+            <ol class="flow-steps" aria-label="진행 단계" hidden>
+              <li id="step-input" class="current">1 가져오기</li>
+              <li id="step-review">2 확인하기</li>
+              <li>3 저장하기</li>
+            </ol>
+          </div>
+          <div class="import-layout">
+            <section class="panel input-panel">
+              <div class="panel-heading">
+                <h2>어떤 공지를 정리할까요?</h2>
+                <button id="sample" class="quiet-button">예시 보기</button>
+              </div>
+              <div class="segmented input-tabs">
+                <button id="text-mode" aria-pressed="true">텍스트</button
+                ><button id="file-mode" aria-pressed="false">PDF · 이미지</button>
+              </div>
+              <div id="file-area" hidden>
+                <label class="drop" id="drop"
+                  ><strong>파일을 선택하거나 여기에 놓으세요</strong><span>PDF 20MB · 30쪽 / 이미지 5MB</span
+                  ><input
+                    id="file"
+                    type="file"
+                    aria-label="PDF 또는 이미지 업로드"
+                    accept="application/pdf,image/png,image/jpeg,image/webp"
+                /></label>
+                <p id="file-status" class="muted" role="status"></p>
+                <div id="file-card" class="selected-file" hidden>
+                  <span class="selected-file-icon"></span>
+                  <div class="selected-file-copy">
+                    <strong class="selected-file-name"></strong><span class="selected-file-meta"></span>
+                  </div>
+                  <button id="remove-file" class="selected-file-remove" aria-label="선택한 파일 제거">삭제</button>
+                </div>
+                <div id="pdf-options" hidden>
+                  <label for="pdf-page">분석할 페이지</label
+                  ><select id="pdf-page">
+                    <option value="all">전체</option>
+                  </select>
+                  <p class="tiny muted">여러 공지가 묶여 있다면 필요한 페이지부터 정리하세요.</p>
+                </div>
+              </div>
+              <label for="input-text" id="input-label" class="sr-only">공지 내용</label
+              ><textarea
+                id="input-text"
+                maxlength="45000"
+                placeholder="학교 공지나 수업 안내를 붙여 넣으세요."
+              ></textarea>
+              <div class="input-bottom">
+                <p>해줌 서버를 거쳐 AI로 전송돼요.</p>
+                <button id="run" class="primary">AI로 정리하기</button>
+              </div>
+            </section>
+            <section class="panel result-panel">
+              <div class="panel-heading"><h2>결과</h2></div>
+              <div id="result-empty" class="empty">
+                <p class="muted">정리한 할 일과 일정이 여기에 나와요.</p>
+              </div>
+              <div id="analysis-result" hidden>
+                <span id="sample-badge" class="badge" hidden>미리 작성된 예시</span>
+                <p id="summary"></p>
+                <div id="draft-list"></div>
+                <div class="save-area">
+                  <p id="save-hint">필요한 항목을 선택해 저장하세요.</p>
+                  <button type="button" class="pill-toggle gcal-pill" aria-pressed="false">
+                    Google 캘린더에도 등록
+                  </button>
+                  <button id="save" class="primary" disabled>선택한 항목 저장</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+        <section id="settings" class="view" hidden>
+          <div class="view-heading">
+            <div>
+              <h1>알림 · 연결 설정</h1>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <section class="panel settings-panel">
+              <h2>Chrome 알림</h2>
+              <form id="reminder-form">
+                <label class="toggle-row"
+                  ><span>Chrome 알림 받기</span><input id="reminders-enabled" type="checkbox" role="switch"
+                /></label>
+                <fieldset>
+                  <legend>마감 · 일정 알림</legend>
+                  <label><input type="checkbox" name="reminder-day" value="3" checked />3일 전</label
+                  ><label><input type="checkbox" name="reminder-day" value="1" checked />하루 전</label
+                  ><label><input type="checkbox" name="reminder-day" value="0" checked />당일</label>
+                </fieldset>
+                <label
+                  >알림 시간
+                  <select id="reminder-hour" aria-label="알림 시간"></select></label
+                ><label class="toggle-row"
+                  ><span>일정 시작 30분 전에도 알림</span><input id="event-reminder" type="checkbox" checked
+                /></label>
+                <div class="actions">
+                  <button class="primary" id="save-reminders" hidden>설정 저장</button
+                  ><button id="test-notification" type="button" class="secondary">알림 확인</button>
+                </div>
+              </form>
+              <p id="notification-help" class="tiny warn"></p>
+            </section>
+            <section class="panel settings-panel">
+              <h2>Google 캘린더</h2>
+              <p id="google-state"></p>
+              <button id="connect-calendar" class="secondary">Google 캘린더 연결</button>
+              <label class="toggle-row" id="auto-sync-row" hidden
+                ><span>저장할 때 Google 캘린더에도 등록</span><input id="auto-sync" type="checkbox" role="switch"
+              /></label>
+              <code id="extension-id" hidden></code>
+            </section>
+            <section class="panel settings-panel">
+              <label class="toggle-row"
+                ><span>웹페이지에 h. 버튼 표시</span><input id="global-helper" type="checkbox" role="switch"
+              /></label>
+            </section>
+            <section class="panel settings-panel">
+              <h2>백업</h2>
+              <div class="actions">
+                <button id="export-json" class="secondary">내려받기</button
+                ><button id="import-json" class="secondary">가져오기</button
+                ><input id="backup-file" type="file" accept="application/json,.json" hidden />
+              </div>
+            </section>
+            <details class="panel settings-panel secondary-settings">
+              <summary>개인정보</summary>
+              <p>
+                분석할 때 선택한 원문·파일을 해줌 서버를 거쳐 Claude에 전송합니다. 날짜를 확인한 미완료 항목에만 알림을
+                보냅니다.
+              </p>
+            </details>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="undo-toast" role="status" aria-live="polite" hidden>
+      <span id="undo-message"></span><button id="undo-action" type="button">실행 취소</button
+      ><button id="undo-dismiss" type="button" aria-label="알림 닫기">닫기</button>
+    </div>
+    <dialog id="manual-dialog">
+      <div class="dialog-heading">
+        <h2>직접 추가</h2>
+        <button id="close-manual" type="button" class="icon-button close-button" aria-label="닫기">×</button>
+      </div>
+      <form id="manual" class="manual">
+        <label
+          >종류<select id="manual-kind" aria-label="새 항목 종류">
+            <option value="task">할 일</option>
+            <option value="schedule">일정</option>
+          </select></label
+        ><label
+          >제목<input
+            id="manual-title"
+            aria-label="새 할 일 제목"
+            placeholder="무엇을 해야 하나요?"
+            required
+            maxlength="500" /></label
+        ><label>날짜<input id="manual-date" aria-label="새 할 일 마감일" type="date" /></label
+        ><label
+          >메모 ><textarea
+            id="manual-notes"
+            aria-label="새 항목 메모"
+            maxlength="5000"
+            rows="3"
+            placeholder="기억할 내용이나 준비 상황을 적어 주세요."
+          ></textarea>
+        </label>
+        <div class="form-footer">
+          <button type="button" class="pill-toggle gcal-pill" aria-pressed="false">Google 캘린더에도 등록</button
+          ><button class="primary">추가</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="item-dialog">
+      <div class="dialog-heading">
+        <h2 id="item-dialog-title">내용 확인</h2>
+        <button type="button" id="close-item" class="icon-button close-button" aria-label="상세 닫기">×</button>
+      </div>
+      <div id="item-detail"></div>
+    </dialog>
+    <dialog id="confirm-dialog">
+      <form method="dialog">
+        <h2 id="confirm-title"></h2>
+        <p id="confirm-copy"></p>
+        <div class="actions">
+          <button value="cancel" class="secondary">취소</button
+          ><button value="yes" class="primary" id="confirm-yes">확인</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

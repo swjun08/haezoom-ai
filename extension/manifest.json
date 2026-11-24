@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "해줌 AI — 공지를 내 할 일로",
-  "version": "3.0.5",
+  "version": "3.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1N2aak3WbdTgKtdkDjvC+adYqmK8acXmbVEjUsSvfEoP6rvpGxKYRId/W2I15GgBo8evJOkwbt0BhkzSXY5vbcIngfOsOWIsBDpK58O7kXxPcELoJRCdg3s4+oPzbiS5y1SJooXVyk3lwPEW2ITdZS0KRoin0NhLNY2Uzar3cVVayWK4vPbN3QYh7lHLYNVFNjUDe3k7QzbtxNZwz5MprWXOikecz+d9OIUEohnwF9ML+KzLbDkctc7syt84+6xhO8S1khCxLKNk8j/O+g7IrDk3oz1wXKFr3BLr6Dv68Mv35uIgLKlh6w6TKV8esmMx+WHDeDFMX0UZF1VCTC9+OwIDAQAB",
   "minimum_chrome_version": "120",
   "description": "공지·PDF·화면을 가져오고 할 일과 마감일을 확인하는 문서 도우미",
   "permissions": [
@@ -11,7 +12,8 @@
     "offscreen",
     "identity",
     "alarms",
-    "notifications"
+    "notifications",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://tessdata.projectnaptha.com/*",
@@ -40,7 +42,7 @@
     "type": "module"
   },
   "oauth2": {
-    "client_id": "644882776567-656l0moar0hc9r8fesddat2hdsenhs2l.apps.googleusercontent.com",
+    "client_id": "1089348356723-a4isk4ovfbmcco0qginukg126cn31bv6.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/calendar.events"
     ]
@@ -65,5 +67,21 @@
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "commands": {
+    "open-helper": {
+      "suggested_key": {
+        "default": "Alt+Shift+H",
+        "mac": "Alt+Shift+H"
+      },
+      "description": "선택한 문장 정리하기 (선택이 없으면 해줌 메뉴 열기)"
+    },
+    "capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "화면 캡처로 공지 가져오기"
+    }
+  }
 }

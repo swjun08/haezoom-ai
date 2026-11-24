@@ -14,7 +14,7 @@ try{
  for(let i=0;i<80&&!await target('확인하고 저장');i++)await new Promise(r=>setTimeout(r,100));
  assert.deepEqual(await site.evaluate(()=>demoSteps.map(x=>x.step)),['opened','analyzed']);assert.ok(await target('수영복, 수영모, 수경, 수건'),'materials visible without expanding');assert.ok(await target('담임 선생님'),'submission visible');
  await click('수영 실기교육 신청서 제출 메모','textbox');await site.keyboard.type('신청서는 가방 앞주머니에 넣기');
- await click('일정 수영 실기교육 참석 2026-11-23','button');await click('수영 실기교육 참석 메모','textbox');await site.keyboard.type('전날 수영복과 수경 준비');
+ await click('일정 수영 실기교육 참석 '+(new Date().getFullYear()===2026?'':'2026년 ')+'11월 23일 (월)','button');await click('수영 실기교육 참석 메모','textbox');await site.keyboard.type('전날 수영복과 수경 준비');
  await site.screenshot({path:resolve('docs/screenshots/28-result-details.png')});await click('확인하고 저장');
  for(let i=0;i<80&&!await target('이 페이지 계속 보기');i++)await new Promise(r=>setTimeout(r,100));assert.ok(await target('이 페이지 계속 보기'));
  assert.deepEqual(await site.evaluate(()=>demoSteps.map(x=>x.step)),['opened','analyzed','saved']);assert.equal(await site.evaluate(()=>demoSteps.every(x=>Object.keys(x).sort().join(',')==='mission,step')),true);const data=await worker.evaluate(()=>chrome.storage.local.get('haezoomItems'));assert.equal(data.haezoomItems.length,2);assert.equal(data.haezoomItems[0].notes,'신청서는 가방 앞주머니에 넣기');assert.equal(data.haezoomItems[1].notes,'전날 수영복과 수경 준비');assert.equal(data.haezoomItems[0].documentSummary,result.summary);

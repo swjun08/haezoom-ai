@@ -1,0 +1,1155 @@
+/* 3.1 화면 정리
+   - 버튼: 주 버튼 40px(검정), 보조 버튼 40px(흰 바탕 + 테두리), 작은 버튼 34px, 아이콘 버튼 36px로 통일
+   - 사이드바: 아이콘 + 15px 글자, 선택한 메뉴는 흰 카드
+   - 목록: 날짜를 '11월 27일 (금)'과 남은 기간(D-3·오늘 마감·2일 지남)으로 표시, 줄 전체를 눌러 상세 열기
+   - 상세 창: 핵심 정보 → 할 수 있는 일(버튼 한 줄) → 수정 → 메모 → 근거 순서 */
+:root {
+  --ink: #191c23;
+  --muted: #69717e;
+  --faint: #9aa1ab;
+  --line: #e5e8ed;
+  --bg: #f5f6f8;
+  --task: #2f62a8;
+  --task-bg: #ebf2fc;
+  --schedule: #22735a;
+  --schedule-bg: #e6f3ed;
+  --overdue: #bf3a22;
+  --overdue-bg: #fdece8;
+  --soon: #94570a;
+  --soon-bg: #fff2da;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ── 버튼 ─────────────────────────────── */
+.primary,
+.secondary,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.primary,
+.button-link.primary {
+  background: var(--ink);
+  color: #fff;
+}
+.secondary {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.secondary:hover {
+  background: #f7f8fa;
+  filter: none;
+}
+.small,
+.primary.small,
+.secondary.small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.icon-button,
+.secondary.icon-button {
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 22px;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+}
+.close-button {
+  background: transparent;
+  color: var(--muted);
+  font-size: 26px;
+  font-weight: 400;
+}
+.close-button:hover {
+  background: #f1f3f5;
+  filter: none;
+}
+.quiet-button {
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.quiet-button:hover {
+  background: #f1f3f5;
+  filter: none;
+}
+.quiet-danger {
+  background: transparent;
+  color: #b3261e;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.quiet-danger:hover {
+  background: #fdecea;
+  filter: none;
+}
+
+/* ── 사이드바 ─────────────────────────── */
+aside {
+  width: 224px;
+  padding: 28px 16px 24px;
+}
+.workspace {
+  margin-left: 224px;
+  width: calc(100% - 224px);
+  padding: 30px 40px 28px;
+}
+aside .brand {
+  padding: 0 10px;
+}
+aside nav {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+nav a,
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #4a515d;
+}
+nav a:hover,
+.settings-link:hover {
+  background: #eceef2;
+}
+nav a.active,
+.settings-link.active {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: 0 1px 3px #191c2314;
+}
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+nav a span.nav-text,
+.settings-link .nav-text {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+nav a #nav-count {
+  margin-left: auto;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 99px;
+  background: #e5e8ed;
+  color: #4a515d;
+  font-size: 12px;
+  font-weight: 650;
+  display: inline-grid;
+  place-items: center;
+}
+nav a.active #nav-count {
+  background: var(--ink);
+  color: #fff;
+}
+.sidebar-bottom {
+  font-size: inherit;
+  color: inherit;
+  gap: 0;
+}
+
+/* ── 화면 제목 ─────────────────────────── */
+.view-heading {
+  padding: 4px 0 22px;
+  min-height: 64px;
+}
+h1 {
+  font-size: 28px;
+}
+.overline {
+  font-size: 13px;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+}
+
+/* ── 목록 줄 ──────────────────────────── */
+.task-card {
+  padding: 14px 12px;
+  margin: 0 -12px;
+  border-radius: 12px;
+  border-bottom: 0;
+  position: relative;
+}
+.task-card + .task-card::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  border-top: 1px solid #eef0f3;
+}
+.task-card.clickable {
+  cursor: pointer;
+}
+.task-card.clickable:hover {
+  background: #f7f8fa;
+}
+.task-card.clickable:hover + .task-card::before,
+.task-card.clickable:hover::before {
+  border-color: transparent;
+}
+.task-card .row {
+  align-items: center;
+  gap: 12px;
+}
+.task-card h3 {
+  font-size: 15px;
+  font-weight: 620;
+  flex: 1;
+  min-width: 0;
+}
+.task-card .complete-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-width: 1.8px;
+}
+.task-card .complete-button:hover {
+  border-color: #1c705a;
+  background: #eef7f3;
+}
+.task-card .item-meta {
+  margin: 6px 0 0 36px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.task-card .item-meta .date-label {
+  font-size: 13px;
+  color: #4a515d;
+}
+.task-card .item-meta .date-label.overdue {
+  color: var(--overdue);
+}
+.due-chip {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #eef0f3;
+  color: #4a515d;
+}
+.due-chip.soon {
+  background: var(--soon-bg);
+  color: var(--soon);
+}
+.due-chip.today {
+  background: var(--ink);
+  color: #fff;
+}
+.due-chip.overdue {
+  background: var(--overdue-bg);
+  color: var(--overdue);
+}
+.task-card .item-meta .badge {
+  font-size: 12px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--soon-bg);
+  color: var(--soon);
+}
+.item-preview {
+  margin: 6px 0 0 36px;
+  font-size: 13px;
+  color: #6f7783;
+}
+.task-card .kind-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+}
+.kind-tag.task {
+  color: var(--task);
+  background: var(--task-bg);
+}
+.kind-tag.schedule {
+  color: var(--schedule);
+  background: var(--schedule-bg);
+}
+/* 목록의 '보기'는 화살표 아이콘, 확인이 필요한 항목만 글자 버튼 */
+.task-card .open-item {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  position: relative;
+}
+.task-card .open-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: translateX(-2px) rotate(45deg);
+}
+.task-card.clickable:hover .open-item {
+  color: var(--ink);
+}
+.task-card .open-item.review-action {
+  width: auto;
+  padding: 0 12px;
+  background: var(--soon-bg);
+  color: var(--soon);
+  font-size: 13px;
+  font-weight: 650;
+}
+.task-card .open-item.review-action::after {
+  display: none;
+}
+.task-card.done h3 {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* ── 오늘 화면 ─────────────────────────── */
+.focus-panel,
+.home-calendar,
+.collection-panel {
+  border-radius: 18px;
+}
+.focus-panel .panel-heading h2,
+.home-calendar .panel-heading h2 {
+  font-size: 18px;
+}
+#home-description {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.focus-panel .priority-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #4a515d;
+  border-bottom: 0;
+  margin: 22px 0 4px;
+  padding: 0;
+}
+.focus-panel .priority-group:first-child {
+  margin-top: 4px;
+}
+.priority-group .count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: #eef0f3;
+  font-size: 11px;
+  display: inline-grid;
+  place-items: center;
+}
+.priority-group.overdue {
+  color: var(--overdue);
+}
+.priority-group.overdue .count {
+  background: var(--overdue-bg);
+}
+.priority-group.review {
+  color: var(--soon);
+}
+.priority-group.review .count {
+  background: var(--soon-bg);
+}
+.more-link {
+  display: block;
+  margin: 8px 0 0;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.more-link:hover {
+  color: var(--ink);
+}
+.list-footer {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mini-day {
+  font-size: 13px;
+}
+.home-agenda h3 {
+  font-size: 15px;
+}
+.agenda-item {
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+}
+.agenda-item:hover {
+  background: #f5f6f8;
+  filter: none;
+}
+.agenda-item strong {
+  font-size: 14px;
+}
+.add-on-day {
+  width: 100%;
+  margin-top: 12px;
+}
+#home-reminders {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f5f6f8;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a515d;
+  text-align: center;
+}
+#home-reminders:hover {
+  background: #eceef2;
+}
+
+/* ── 할 일·일정 목록 도구 ───────────────── */
+.collection-toolbar {
+  gap: 12px;
+}
+.segmented button {
+  min-height: 36px;
+  font-size: 14px;
+}
+.list-tools input,
+.list-tools select {
+  height: 40px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+.list-summary {
+  font-size: 13px;
+}
+
+/* ── 캘린더 ───────────────────────────── */
+.calendar-toolbar {
+  gap: 8px;
+}
+.calendar-toolbar h2 {
+  font-size: 20px;
+  min-width: 120px;
+  text-align: center;
+}
+.calendar-toolbar #today {
+  margin-left: auto;
+}
+.calendar-item {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+}
+.calendar-item .chip-time {
+  flex-shrink: 0;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.calendar-item .chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#calendar-review:not(:empty) {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--soon-bg);
+  color: var(--soon);
+  font-size: 13px;
+}
+
+/* ── 상세 창 ──────────────────────────── */
+dialog {
+  border-radius: 20px;
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dialog-heading h2 {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+#item-dialog {
+  width: min(640px, calc(100vw - 32px));
+  padding: 20px 28px 28px;
+}
+#item-dialog .task-card {
+  margin: 0;
+  padding: 0;
+}
+#item-dialog .task-card h3 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+#item-dialog .task-card .row {
+  align-items: flex-start;
+}
+#item-dialog .task-card .complete-button {
+  margin-top: 5px;
+}
+#item-dialog .item-meta {
+  margin: 10px 0 0 36px;
+}
+#item-dialog .item-facts {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f7f8fa;
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+#item-dialog .item-expansion > .item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+.actions-spacer {
+  flex: 1;
+}
+#item-dialog .edit-form:not([hidden]) {
+  margin-top: 16px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+#item-dialog .item-memo {
+  margin: 22px 0 0;
+  padding-top: 20px;
+}
+#item-dialog .item-expansion > details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+#item-dialog .item-expansion > details summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+.memo-actions button {
+  min-height: 36px;
+  font-size: 13px;
+}
+
+/* 분석 결과(공지 가져오기 화면)도 같은 버튼 체계 */
+#draft-list .task-card .item-expansion > .item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.save-area .primary,
+#run {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+/* 알림 창(토스트) */
+#undo-toast {
+  border-radius: 12px;
+  padding: 10px 10px 10px 18px;
+  gap: 12px;
+  font-size: 14px;
+}
+#undo-action {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  aside {
+    width: auto;
+    padding: 16px;
+  }
+  .workspace {
+    margin: 0;
+    width: 100%;
+    padding: 16px;
+  }
+  aside nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  nav a {
+    min-height: 38px;
+    font-size: 13px;
+    gap: 6px;
+    padding: 0 10px;
+  }
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+  }
+  #item-dialog {
+    padding: 16px 18px 22px;
+  }
+  #item-dialog .task-card h3 {
+    font-size: 19px;
+  }
+}
+
+/* 보정: 이전 스타일과 겹치는 부분 */
+nav a,
+.settings-link {
+  justify-content: flex-start;
+}
+.task-card .item-meta {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.task-card .item-meta > span {
+  flex-shrink: 0;
+}
+.task-card .item-meta .item-preview {
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: #7a828e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-card .item-meta .item-preview::before {
+  content: '·';
+  margin: 0 6px 0 0;
+  color: #c2c7cf;
+}
+#item-dialog .kind-tag {
+  display: none;
+}
+#item-dialog .task-card .row {
+  border: 0;
+  padding: 0;
+}
+#item-dialog .item-meta .item-preview {
+  display: none;
+}
+
+/* ── 2차: 더 단순하게, 정렬 맞추기 ───────────────────────────
+   - 모든 화면의 큰 제목이 같은 높이에 오도록 제목 영역 높이 고정, 아래쪽 정렬
+   - 사이드바 로고·메뉴 아이콘·설정 아이콘의 왼쪽 끝을 같은 선(12px)에 맞춤
+   - 캘린더 내보내기는 버튼 하나(메뉴)로, 범례는 월 이동 줄 오른쪽으로 */
+aside .brand {
+  padding: 0 12px;
+  min-height: 34px;
+}
+.view-heading {
+  align-items: flex-end;
+  min-height: 78px;
+  padding: 0 0 22px;
+}
+.view-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.view-heading h1 {
+  line-height: 40px;
+}
+.view-heading .overline {
+  margin: 0 0 2px;
+  line-height: 18px;
+}
+
+/* 패널 머리줄: 제목과 버튼 세로 가운데 */
+.panel-heading {
+  align-items: center;
+  min-height: 40px;
+  margin-bottom: 14px;
+}
+.panel-heading h2 {
+  margin: 0;
+  line-height: 1.4;
+}
+.panel-heading a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.panel-heading a:hover {
+  color: var(--ink);
+}
+
+/* 분할 버튼(할 일/일정 등)과 입력칸 높이 40px로 통일 */
+.segmented {
+  padding: 3px;
+  gap: 2px;
+  min-height: 40px;
+  align-items: center;
+}
+.segmented button {
+  min-height: 34px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.collection-toolbar {
+  align-items: center;
+  margin-bottom: 8px;
+}
+.list-tools {
+  gap: 8px;
+  align-items: center;
+}
+.list-tools input,
+.list-tools select {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 0 12px;
+}
+
+/* 캘린더 */
+.calendar-toolbar {
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.calendar-toolbar button {
+  padding: 0 14px;
+}
+.calendar-toolbar .icon-button {
+  padding: 0;
+}
+.calendar-toolbar h2 {
+  margin: 0 6px;
+  min-width: 128px;
+}
+.calendar-toolbar .legend {
+  margin-left: auto;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.calendar-toolbar .legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.calendar-toolbar .legend .legend-schedule {
+  margin-left: 10px;
+}
+.calendar-toolbar #today {
+  margin-left: 0;
+}
+.legend-task {
+  background: var(--task);
+}
+.legend-schedule {
+  background: var(--schedule);
+}
+.calendar-meta {
+  display: none;
+}
+
+/* 드롭다운 메뉴 */
+.menu {
+  position: relative;
+}
+.menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+.menu > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-right: 1.7px solid currentColor;
+  border-bottom: 1.7px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+.menu[open] > summary {
+  background: #f1f3f5;
+}
+.menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: 264px;
+  padding: 6px;
+  display: grid;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 14px 40px #191c2320;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.menu-item:hover:not(:disabled) {
+  background: #f5f6f8;
+  filter: none;
+}
+.menu-item:disabled {
+  cursor: default;
+  color: var(--faint);
+}
+.menu-note {
+  margin: -4px 0 6px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+a.menu-note {
+  margin: 2px 0 2px;
+  padding: 8px 12px 6px;
+  border-top: 1px solid #eef0f3;
+}
+a.menu-note:hover {
+  color: var(--ink);
+}
+
+/* 오늘 화면 오른쪽 달력: 숫자 칸 정사각형, 가운데 정렬 */
+#mini-calendar {
+  gap: 4px 0;
+}
+.mini-day {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.mini-weekday {
+  text-align: center;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* 설정: 알림은 바꾸면 바로 저장 */
+.settings-panel h2 {
+  margin: 0 0 6px;
+}
+.settings-panel > p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+/* 모든 화면에서 사이드바 폭·본문 시작선 동일 */
+body[data-view] aside {
+  width: 224px;
+}
+body[data-view] .workspace {
+  margin-left: 224px;
+  width: calc(100% - 224px);
+}
+/* 제목 영역: 날짜 줄이 있는 오늘 화면도 큰 제목이 같은 높이에 오도록 */
+.view-heading {
+  min-height: 86px;
+}
+@media (max-width: 800px) {
+  body[data-view] aside {
+    width: auto;
+  }
+  body[data-view] .workspace {
+    margin-left: 0;
+    width: 100%;
+  }
+  .view-heading {
+    min-height: 0;
+  }
+}
+
+/* 상세 창: 구분선은 메모 위 한 줄만 */
+#item-dialog .dialog-heading {
+  margin-bottom: 6px;
+}
+#item-dialog .task-card .row,
+#item-dialog .item-meta,
+#item-dialog .task-card > .item-expansion {
+  border: 0;
+}
+#item-dialog .task-card > .item-expansion {
+  margin-top: 0;
+  padding-top: 0;
+}
+#item-dialog .item-actions button {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+#item-dialog .item-memo {
+  border-top: 1px solid #eef0f3;
+}
+
+/* 3차: 설명 없이 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.warn:empty {
+  display: none;
+}
+.warn {
+  margin-top: 12px;
+  color: var(--overdue);
+}
+#google-state:empty {
+  display: none;
+}
+#google-state {
+  margin: 0 0 12px;
+  font-weight: 600;
+  color: var(--schedule);
+}
+.settings-grid {
+  align-content: start;
+}
+.settings-panel h2 {
+  margin-bottom: 16px;
+}
+#result-empty {
+  justify-content: center;
+}
+#result-empty p {
+  font-size: 14px;
+}
+
+/* 4차: 한 줄에 같은 뜻 하나만. 알약 모양 표시 대신 글자 색으로만 */
+.due-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6a7280;
+}
+.due-text::before {
+  content: '·';
+  margin-right: 6px;
+  color: #c2c7cf;
+  font-weight: 400;
+}
+.due-text.overdue,
+.task-card .item-meta .date-label.overdue {
+  color: var(--overdue);
+}
+.due-text.today,
+.due-text.soon {
+  color: var(--ink);
+}
+.task-card .item-meta {
+  gap: 6px;
+  margin-top: 4px;
+}
+.task-card .item-meta .date-label {
+  color: #6a7280;
+}
+/* 그룹 이름: 색·개수 표시 없이 회색 작은 글씨 */
+.focus-panel .priority-group,
+.focus-panel .priority-group.overdue,
+.focus-panel .priority-group.review {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 20px 0 2px;
+}
+.focus-panel .priority-group:first-child {
+  margin-top: 0;
+}
+/* 확인이 필요한 줄의 버튼: 테두리만 있는 작은 버튼 하나 */
+.task-card .open-item.review-action {
+  min-height: 32px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-weight: 600;
+}
+.task-card .open-item.review-action:hover {
+  background: #f5f6f8;
+}
+
+/* 설정: 한 줄로 쌓기 */
+#settings .settings-grid {
+  grid-template-columns: minmax(0, 720px);
+  gap: 12px;
+}
+#settings fieldset {
+  padding: 0;
+  margin: 8px 0 0;
+  border: 0;
+}
+#settings legend {
+  padding: 0;
+}
+#settings .settings-panel button.secondary {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* Google 캘린더 알약: 누르면 체크가 켜지고 저장할 때 같이 등록 */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px 0 10px;
+  border-radius: 99px;
+  background: #fff;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill-toggle::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.6px #c5cad2;
+  flex-shrink: 0;
+}
+.pill-toggle[aria-pressed='true'] {
+  color: var(--ink);
+  background: #eef5ff;
+  box-shadow: inset 0 0 0 1px #b9d2f2;
+}
+.pill-toggle[aria-pressed='true']::before {
+  box-shadow: none;
+  background: #2f62a8
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center/16px no-repeat;
+}
+.pill-toggle:hover {
+  filter: none;
+  background: #f5f6f8;
+}
+.pill-toggle[aria-pressed='true']:hover {
+  background: #e4effd;
+}
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+.save-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.save-area #save-hint {
+  margin: 0 auto 0 0;
+}
+.kind-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+.kind-text.task {
+  color: var(--task);
+}
+.kind-text.schedule {
+  color: var(--schedule);
+}
+.kind-text + .date-label::before {
+  content: '·';
+  margin-right: 6px;
+  color: #c2c7cf;
+}
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
+}
+dialog::backdrop {
+  background: #191c2366;
+}
+
+/* 수정 중에는 같은 내용을 두 번 보여 주지 않도록 요약·버튼 줄을 숨깁니다 */
+#item-dialog .item-expansion:has(> .edit-form:not([hidden])) > .item-facts,
+#item-dialog .item-expansion:has(> .edit-form:not([hidden])) > .item-actions {
+  display: none;
+}
+#item-dialog .edit-form:not([hidden]) {
+  margin-top: 20px;
+}
+#item-dialog .edit-form .actions {
+  position: sticky;
+  bottom: -28px;
+  padding: 12px 0 4px;
+  background: inherit;
+}

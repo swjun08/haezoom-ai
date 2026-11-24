@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>해줌 AI 체험</title>
+  <meta name="haezoom-demo" content="booth">
+  <link rel="icon" href="assets/favicon.svg">
+  <link rel="preload" href="assets/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <!-- ═════════ 첫 화면 ═════════ -->
+  <section class="home" id="home" aria-label="해줌 AI 소개">
+    <header class="home-top">
+      <span class="logo"><span class="mark">h.</span>해줌 AI</span>
+      <span class="home-event">2026 서울학생 AI 개발 성과발표회</span>
+    </header>
+    <h1 class="sr-only">읽어 줌. 정리해 줌. 알려 줌.</h1>
+    <div class="trio" id="trio" aria-hidden="true">
+      <div class="col" data-phase="0">
+        <p class="word"><i>읽어 줌.</i></p>
+        <div class="panel panel-src" id="showSrc"></div>
+      </div>
+      <div class="col" data-phase="1">
+        <p class="word"><i>정리해 줌.</i></p>
+        <div class="panel panel-res">
+          <p class="panel-head"><span class="mark sm">h.</span>정리한 내용<small id="showCount"></small></p>
+          <ul id="showList"></ul>
+        </div>
+      </div>
+      <div class="col" data-phase="2">
+        <p class="word"><i>알려 줌.</i></p>
+        <div class="panel panel-noti">
+          <div class="noti-card" id="showNoti"><span class="mark sm">h.</span><div><b id="notiTitle"></b><p id="notiBody"></p></div><small id="notiWhen"></small></div>
+          <ol class="noti-plan" id="notiPlan"></ol>
+        </div>
+      </div>
+    </div>
+    <footer class="home-foot">
+      <p class="home-sub">‘그거 내일까지였어?’가 없어지는 방법</p>
+      <button class="btn btn-solid btn-xl" id="startBtn" type="button">체험 시작하기</button>
+      <small>화면 아무 곳이나 눌러도 시작돼요</small>
+    </footer>
+  </section>
+
+  <!-- ═════════ 체험 ═════════ -->
+  <div class="shell" id="shell" hidden>
+    <header class="bar">
+      <button class="logo" id="logoBtn" type="button" title="처음 화면으로"><span class="mark">h.</span>해줌 AI</button>
+      <nav class="steps" id="steps" aria-label="체험 단계">
+        <button type="button" data-go="1" data-n="1"><b>1</b>찾아보기</button>
+        <button type="button" data-go="2" data-n="2"><b>2</b>맡겨보기</button>
+        <button type="button" data-go="4" data-n="3"><b>3</b>챙기기</button>
+        <button type="button" data-go="5" data-n="4"><b>4</b>직접 해보기</button>
+      </nav>
+      <div class="bar-end">
+        <button class="pill" id="homeBtn" type="button">처음으로</button>
+        <span class="api-dot" id="apiDot" title="AI 서버 상태 확인 중"></span>
+      </div>
+    </header>
+
+    <main class="views">
+      <section class="view" data-step="1">
+        <div class="stage" id="v1">
+          <div class="paper-scroll" id="s1Stage"></div>
+        </div>
+      </section>
+
+      <section class="view" data-step="2">
+        <div class="stage" id="v2">
+          <div class="post-scroll" id="selBody"></div>
+          <div class="helper" id="selAct" hidden>
+            <span class="mark sm">h.</span><span id="selCount"></span>
+            <button class="helper-go" id="selGo" type="button">해줌으로 정리</button>
+            <button class="helper-x" id="selClear" type="button" aria-label="선택 지우기">✕</button>
+          </div>
+          <div class="rv-layer" id="rvLayer" hidden><div class="rv" id="s3Modal"></div></div>
+        </div>
+      </section>
+
+      <section class="view" data-step="4">
+        <div class="stage" id="s4Stage">
+          <div class="ws" id="ws"></div>
+          <div class="os-noti" id="osNoti" hidden></div>
+        </div>
+      </section>
+
+      <section class="view" data-step="5">
+        <div class="stage s5" id="s5Stage">
+          <div class="lib-col">
+            <div class="lib-tabs" id="libTabs" role="tablist">
+              <button type="button" role="tab" data-lib="notice" aria-selected="true">통신문</button>
+              <button type="button" role="tab" data-lib="chat" aria-selected="false">단톡방</button>
+              <button type="button" role="tab" data-lib="class" aria-selected="false">게시판</button>
+              <button type="button" role="tab" data-lib="pdf" aria-selected="false">PDF</button>
+            </div>
+            <ul class="lib" id="lib"></ul>
+            <button class="link-btn web-fb" id="webFb" type="button">확장이 반응하지 않나요?</button>
+          </div>
+          <div class="s5-src" id="s5Src"></div>
+        </div>
+      </section>
+
+      <!-- 공통: 할 일 안내 막대 · 아래 버튼 · 팝업 -->
+      <div class="cue" id="cue" hidden><span class="cue-dot"></span><span id="cueText"></span><span class="cue-extra" id="cueExtra"></span></div>
+      <div class="dock" id="dock" hidden></div>
+      <div class="coach" id="coach" hidden>
+        <div class="coach-card" role="dialog" aria-modal="true" aria-labelledby="coachTitle">
+          <div id="coachTop"></div>
+          <p class="coach-step" id="coachStep"></p>
+          <h2 id="coachTitle"></h2>
+          <p class="coach-body" id="coachBody"></p>
+          <div class="coach-extra" id="coachExtra"></div>
+          <div class="coach-btns" id="coachBtns"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 자리 비움 -->
+  <div class="idle" id="idle" hidden>
+    <div class="idle-card">
+      <img src="assets/haezoom-scene.jpg" alt="">
+      <h2>아직 체험 중이신가요?</h2>
+      <p><b id="idleNum">10</b>초 뒤 처음 화면으로 돌아가요. 저장한 내용도 지워져요.</p>
+      <button class="btn btn-solid" id="idleKeep" type="button">계속 체험하기</button>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+</body>
+</html>
