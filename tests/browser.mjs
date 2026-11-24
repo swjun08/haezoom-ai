@@ -40,7 +40,7 @@ try {
   const first=page.locator('#item-detail .task-card');
   if(!await first.locator('.edit-form').isVisible())await first.getByRole('button',{name:/^(날짜·내용 확인|내용 수정)$/}).click();
   await first.getByLabel('확인한 날짜').fill('2026-11-13');
-  await first.getByLabel('원문을 확인했고 제목과 날짜가 맞습니다').check();
+  await first.getByLabel('제목과 날짜를 확인했어요').check();
   await first.getByRole('button', { name: '수정 저장' }).click();
   await page.waitForFunction(async()=>(await chrome.storage.local.get('haezoomItems')).haezoomItems[0].confirmed);
 
