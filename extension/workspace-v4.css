@@ -989,3 +989,68 @@ body[data-view] .workspace {
 #result-empty p {
   font-size: 14px;
 }
+
+/* 4차: 한 줄에 같은 뜻 하나만. 알약 모양 표시 대신 글자 색으로만 */
+.due-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6a7280;
+}
+.due-text::before {
+  content: '·';
+  margin-right: 6px;
+  color: #c2c7cf;
+  font-weight: 400;
+}
+.due-text.overdue,
+.task-card .item-meta .date-label.overdue {
+  color: var(--overdue);
+}
+.due-text.today,
+.due-text.soon {
+  color: var(--ink);
+}
+.task-card .item-meta {
+  gap: 6px;
+  margin-top: 4px;
+}
+.task-card .item-meta .date-label {
+  color: #6a7280;
+}
+/* 그룹 이름: 색·개수 표시 없이 회색 작은 글씨 */
+.focus-panel .priority-group,
+.focus-panel .priority-group.overdue,
+.focus-panel .priority-group.review {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 20px 0 2px;
+}
+.focus-panel .priority-group:first-child {
+  margin-top: 0;
+}
+/* 확인이 필요한 줄의 버튼: 테두리만 있는 작은 버튼 하나 */
+.task-card .open-item.review-action {
+  min-height: 32px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-weight: 600;
+}
+.task-card .open-item.review-action:hover {
+  background: #f5f6f8;
+}
+
+/* 설정: 한 줄로 쌓기 */
+#settings .settings-grid {
+  grid-template-columns: minmax(0, 720px);
+  gap: 12px;
+}
+#settings fieldset {
+  padding: 0;
+  margin: 8px 0 0;
+  border: 0;
+}
+#settings legend {
+  padding: 0;
+}

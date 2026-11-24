@@ -234,17 +234,15 @@ function renderHome() {
   const groups = [
     ['기한이 지났어요', dated.filter(x => calendarDates(x)?.start < today), 'overdue'],
     ['오늘까지', dated.filter(x => calendarDates(x)?.start === today), 'today'],
-    ['날짜를 확인해 주세요', unknown, 'review'],
+    ['날짜 미정', unknown, 'review'],
     ['다가오는 할 일', upcoming.slice(0, 5), ''],
   ];
   for (const [name, list, tone] of groups) {
     if (!list.length) continue;
-    const title = node('h3', undefined, 'priority-group ' + tone);
-    title.append(
-      node('span', name),
-      node('span', String(list === groups[3][1] ? upcoming.length : list.length), 'count'),
+    $('home-list').append(
+      node('h3', name, 'priority-group ' + tone),
+      ...list.map(x => listCard(x, { showKind: false, hideTodayChip: true })),
     );
-    $('home-list').append(title, ...list.map(x => listCard(x, { showKind: false })));
   }
   if (upcoming.length > 5) {
     const more = node('a', `다가오는 할 일 ${upcoming.length - 5}개 더 보기`, 'more-link');
@@ -478,7 +476,7 @@ function makeEditor(item, onSave) {
   };
   return form;
 }
-function card(item, isDraft = false, { showKind = true } = {}) {
+function card(item, isDraft = false, { showKind = true, hideTodayChip = false } = {}) {
   const article = node('article', undefined, `task-card${item.completed ? ' done' : ''}`);
   article.dataset.id = item.id;
   const heading = node('div', undefined, 'row');
@@ -524,11 +522,10 @@ function card(item, isDraft = false, { showKind = true } = {}) {
       'date-label' + (due?.tone === 'overdue' ? ' overdue' : ''),
     ),
   );
-  if (due?.chip) meta.append(node('span', due.chip, 'due-chip ' + due.tone));
-  if (!item.confirmed) meta.append(node('span', '날짜 확인 필요', 'badge'));
+  // 같은 뜻을 두 번 쓰지 않습니다: 남은 기간은 날짜 옆 글자 하나, 확인 필요는 오른쪽 버튼 하나로만.
+  if (due?.chip && !(hideTodayChip && due.tone === 'today'))
+    meta.append(node('span', due.chip, 'due-text ' + due.tone));
   if (item.reminderEnabled === false) meta.append(node('span', '알림 끔', 'muted tiny'));
-  const preview = item.notes || item.action || item.details;
-  if (preview) meta.append(node('span', (item.notes ? '메모 · ' : '') + preview, 'item-preview'));
   article.append(meta);
   const expansion = node('details', undefined, 'item-expansion');
   expansion.append(node('summary', '상세 · 수정'));
@@ -1369,16 +1366,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
 async function refreshHelperSetting() {
   const registered = await chrome.scripting.getRegisteredContentScripts({ ids: ['hz-global'] });
   const enabled = registered.length > 0;
-  $('global-helper').textContent = enabled ? '모든 사이트에서 버튼 끄기' : '모든 사이트에서 버튼 켜기';
-  $('global-helper').dataset.enabled = String(enabled);
+  $('global-helper').checked = enabled;
 }
-$('global-helper').onclick = async () => {
+$('global-helper').onchange = async () => {
   const b = $('global-helper');
   b.disabled = true;
   try {
-    if (b.dataset.enabled === 'true') await request('disableGlobal');
+    if (!b.checked) await request('disableGlobal');
     else {
-      if (!(await chrome.permissions.request({ origins: ['https://*/*', 'http://*/*'] }))) return;
+      if (!(await chrome.permissions.request({ origins: ['https://*/*', 'http://*/*'] })))
+        return await refreshHelperSetting();
       if (!(await request('enableGlobal'))) throw new Error('사이트 접근 권한을 확인해 주세요.');
     }
     await refreshHelperSetting();
