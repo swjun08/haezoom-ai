@@ -11,6 +11,8 @@ import {
   GoogleCalendarError,
   syncGoogleEvent,
 } from './calendar.mjs';
+import { GOOGLE_WEB_CLIENT_ID } from './google-config.mjs';
+import { buildAuthUrl, CALENDAR_SCOPE, parseAuthRedirect, shouldUseWebFlow } from './google-auth.mjs';
 import { mergeItems, validateItem, importBackup } from './item-store.mjs';
 
 installReminderService(chrome);
@@ -89,20 +91,66 @@ async function storedItems() {
   return items;
 }
 
-async function acquireCalendarToken(interactive = false) {
-  if (!interactive && !(await chrome.storage.local.get('calendarEnabled')).calendarEnabled)
-    throw new Error('Google 캘린더를 먼저 연결해 주세요.');
+// Google 토큰: Chrome 로그인 계정(getAuthToken) 우선, 안 되는 환경은 웹 인증(launchWebAuthFlow)으로
+const WEB_TOKEN_KEY = 'googleWebToken';
+async function webFlowToken(interactive) {
+  if (!interactive) {
+    const cached = (await chrome.storage.session.get(WEB_TOKEN_KEY))[WEB_TOKEN_KEY];
+    if (cached?.token && cached.expiresAt > Date.now() + 60000) return cached.token;
+  }
+  const state = crypto.randomUUID();
+  let redirect;
   try {
-    const result = await chrome.identity.getAuthToken({ interactive, enableGranularPermissions: true });
-    if (!result?.token) throw new Error('Google 인증 토큰이 없습니다.');
-    if (result.grantedScopes && !result.grantedScopes.includes('https://www.googleapis.com/auth/calendar.events'))
-      throw new Error('캘린더 일정 권한을 허용해 주세요.');
-    return result.token;
+    redirect = await chrome.identity.launchWebAuthFlow({
+      url: buildAuthUrl({
+        clientId: GOOGLE_WEB_CLIENT_ID,
+        redirectUri: chrome.identity.getRedirectURL(),
+        interactive,
+        state,
+      }),
+      interactive,
+    });
   } catch (error) {
     if (!interactive) throw new Error('Google 연결이 만료됐어요. 다시 연결해 주세요.');
+    throw new Error(
+      /did not approve|closed|cancel/i.test(error.message)
+        ? 'Google 연결이 취소됐어요. 필요할 때 다시 연결할 수 있어요.'
+        : 'Google 연결 창을 열지 못했어요. ' + String(error.message).slice(0, 200),
+    );
+  }
+  const result = parseAuthRedirect(redirect, state);
+  await chrome.storage.session.set({ [WEB_TOKEN_KEY]: result });
+  return result.token;
+}
+async function chromeToken(interactive) {
+  const result = await chrome.identity.getAuthToken({ interactive, enableGranularPermissions: true });
+  if (!result?.token) throw new Error('Google 인증 토큰이 없습니다.');
+  if (result.grantedScopes && !result.grantedScopes.includes(CALENDAR_SCOPE))
+    throw new Error('캘린더 일정 권한을 허용해 주세요.');
+  return result.token;
+}
+async function acquireCalendarToken(interactive = false) {
+  const { calendarEnabled, calendarAuth } = await chrome.storage.local.get(['calendarEnabled', 'calendarAuth']);
+  if (!interactive && !calendarEnabled) throw new Error('Google 캘린더를 먼저 연결해 주세요.');
+  if (!interactive && calendarAuth === 'web') return webFlowToken(false);
+  try {
+    const token = await chromeToken(interactive);
+    if (interactive) await chrome.storage.local.set({ calendarAuth: 'chrome' });
+    return token;
+  } catch (error) {
+    if (interactive && GOOGLE_WEB_CLIENT_ID && shouldUseWebFlow(error)) {
+      const token = await webFlowToken(true);
+      await chrome.storage.local.set({ calendarAuth: 'web' });
+      return token;
+    }
+    if (!interactive) throw new Error('Google 연결이 만료됐어요. 다시 연결해 주세요.');
     const reason = String(error.message || '');
-    if (/not signed in|not logged in/i.test(reason))
+    if (/not signed in|not logged in|turned off browser sign/i.test(reason))
       throw new Error('Chrome 프로필에 Google 계정으로 로그인한 뒤 다시 연결해 주세요.');
+    if (/not supported|unsupported/i.test(reason))
+      throw new Error(
+        '이 브라우저는 Chrome 계정 연결을 지원하지 않아요. Chrome에서 연결하거나 캘린더 파일 받기를 이용해 주세요.',
+      );
     if (/bad client|invalid.client|client id|redirect|origin mismatch/i.test(reason))
       throw new Error(
         'Google 연결 설정과 현재 확장 ID가 맞지 않아요. 관리자에게 연결 문제 해결에 표시된 ID를 전달해 주세요.',
@@ -113,6 +161,11 @@ async function acquireCalendarToken(interactive = false) {
       throw new Error('Google에 연결하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
     throw new Error('Google 연결을 완료하지 못했어요. ' + reason.slice(0, 250));
   }
+}
+async function forgetToken(token) {
+  const { calendarAuth } = await chrome.storage.local.get('calendarAuth');
+  if (calendarAuth === 'web') await chrome.storage.session.remove(WEB_TOKEN_KEY);
+  else if (token) await chrome.identity.removeCachedAuthToken({ token });
 }
 let calendarQueue = Promise.resolve();
 function calendarWork(work) {
@@ -126,7 +179,7 @@ async function withCalendarToken(work) {
     return await work(token);
   } catch (error) {
     if (!(error instanceof GoogleCalendarError) || error.status !== 401) throw error;
-    await chrome.identity.removeCachedAuthToken({ token });
+    await forgetToken(token);
     token = await acquireCalendarToken(false);
     return work(token);
   }
@@ -423,8 +476,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
           try {
             token = await acquireCalendarToken(false);
           } catch {}
-          await chrome.storage.local.set({ calendarEnabled: false });
-          if (token) await chrome.identity.removeCachedAuthToken({ token });
+          if (token) await forgetToken(token);
+          await chrome.storage.session.remove(WEB_TOKEN_KEY);
+          await chrome.storage.local.set({ calendarEnabled: false, calendarAuth: null });
           await chrome.identity.clearAllCachedAuthTokens();
           if (token) {
             try {
