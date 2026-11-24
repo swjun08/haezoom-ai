@@ -20,6 +20,18 @@
 
 ## Chrome 설치 / 업데이트
 
+### 바로 설치하기 (압축 파일)
+
+1. [dist/haezoom-ai-extension-3.1.0.zip](dist/haezoom-ai-extension-3.1.0.zip)을 내려받습니다. (파일 화면에서 오른쪽 위 다운로드 버튼, 또는 [Releases](../../releases)의 첨부 파일)
+2. 압축을 풀면 `haezoom-ai-extension` 폴더가 나옵니다. 지우거나 옮기지 않을 위치에 둡니다.
+3. Chrome 주소창에 `chrome://extensions`를 열고 오른쪽 위 **개발자 모드**를 켭니다.
+4. **압축해제된 확장 프로그램을 로드합니다** → `haezoom-ai-extension` 폴더를 선택합니다.
+5. 카드의 ID가 `nlfhehdelekmadneoopeciaemejkmale`이면 맞게 설치된 것입니다. 툴바에서 해줌을 고정합니다.
+
+Google 캘린더 연결은 Google Cloud의 테스트 사용자로 등록된 계정만 가능합니다. 연결할 계정을 개발자에게 알려 주세요. 압축 파일은 `npm run package`로 다시 만듭니다.
+
+### 저장소에서 설치하기
+
 > **3.0.x에서 3.1.0으로 올릴 때:** 3.1.0부터 확장 ID가 `nlfhehdelekmadneoopeciaemejkmale`로 고정됩니다. 기존 설치와 ID가 달라 Chrome이 새 확장으로 인식하므로, 업데이트 전에 **알림 · 연결 설정 → 데이터 백업 → 내려받기**로 저장 항목을 받아 두고, 새로 설치한 뒤 같은 곳의 **가져오기**로 복원해 주세요. 기존 해줌 카드는 백업 후 삭제합니다. 사이트 권한(해줌 버튼 표시)과 툴바 고정도 다시 설정합니다.
 
 1. 저장소를 내려받습니다.
