@@ -655,6 +655,10 @@ button{min-height:40px;padding:0 16px;font-size:14px;border-radius:10px}
     shadow.append(polishStyle);
     panel.append(header, body, zoom);
     backdrop.append(panel);
+    // 창 바깥(어두운 배경)을 누르면 닫습니다. 분석 중에는 닫지 않습니다.
+    backdrop.addEventListener('mousedown', event => {
+      if (event.target === backdrop && panel.getAttribute('aria-busy') !== 'true') cleanup();
+    });
     shadow.prepend(style);
     shadow.append(backdrop);
     document.documentElement.append(host);

@@ -41,3 +41,4 @@ jobs:
       - run: node tests/pdf.mjs
       - run: node tests/enhance-browser.mjs
       - run: node tests/booth-browser.mjs
+      - run: node tests/ux-browser.mjs

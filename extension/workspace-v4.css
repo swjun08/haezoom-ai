@@ -1131,3 +1131,25 @@ body[data-view] .workspace {
   margin-right: 6px;
   color: #c2c7cf;
 }
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
+}
+dialog::backdrop {
+  background: #191c2366;
+}
+
+/* 수정 중에는 같은 내용을 두 번 보여 주지 않도록 요약·버튼 줄을 숨깁니다 */
+#item-dialog .item-expansion:has(> .edit-form:not([hidden])) > .item-facts,
+#item-dialog .item-expansion:has(> .edit-form:not([hidden])) > .item-actions {
+  display: none;
+}
+#item-dialog .edit-form:not([hidden]) {
+  margin-top: 20px;
+}
+#item-dialog .edit-form .actions {
+  position: sticky;
+  bottom: -28px;
+  padding: 12px 0 4px;
+  background: inherit;
+}

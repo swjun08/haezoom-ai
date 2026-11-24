@@ -25,12 +25,57 @@ try {
   assert.equal(await page.locator('#export-ics').isDisabled(), true, '저장한 항목이 없으면 비활성');
 
   await page.evaluate(async () => {
-    const base = { completed: false, revision: 1, createdAt: '2026-11-24T00:30:00Z', notes: '', source: { title: '학급 공지' } };
+    const base = {
+      completed: false,
+      revision: 1,
+      createdAt: '2026-11-24T00:30:00Z',
+      notes: '',
+      source: { title: '학급 공지' },
+    };
     await chrome.storage.local.set({
       haezoomItems: [
-        { ...base, id: crypto.randomUUID(), kind: 'task', title: '참가 동의서 제출', date: '2026-11-27', confirmed: true, needs_review: false, action: '제출', materials: [], cost: null, submission: '담임', evidence: '11월 27일까지 제출' },
-        { ...base, id: crypto.randomUUID(), kind: 'schedule', title: '학부모 설명회', date: '2026-12-04', time: '오후 6시', location: '시청각실', confirmed: true, needs_review: false, details: '설명회', evidence: '12월 4일 오후 6시' },
-        { ...base, id: crypto.randomUUID(), kind: 'task', title: '상담 신청서 제출', date: '다음 주 금요일', originalDate: '다음 주 금요일', confirmed: false, needs_review: true, action: '신청서 제출', materials: [], cost: null, submission: '담임', evidence: '다음 주 금요일까지 제출' },
+        {
+          ...base,
+          id: crypto.randomUUID(),
+          kind: 'task',
+          title: '참가 동의서 제출',
+          date: '2026-11-27',
+          confirmed: true,
+          needs_review: false,
+          action: '제출',
+          materials: [],
+          cost: null,
+          submission: '담임',
+          evidence: '11월 27일까지 제출',
+        },
+        {
+          ...base,
+          id: crypto.randomUUID(),
+          kind: 'schedule',
+          title: '학부모 설명회',
+          date: '2026-12-04',
+          time: '오후 6시',
+          location: '시청각실',
+          confirmed: true,
+          needs_review: false,
+          details: '설명회',
+          evidence: '12월 4일 오후 6시',
+        },
+        {
+          ...base,
+          id: crypto.randomUUID(),
+          kind: 'task',
+          title: '상담 신청서 제출',
+          date: '다음 주 금요일',
+          originalDate: '다음 주 금요일',
+          confirmed: false,
+          needs_review: true,
+          action: '신청서 제출',
+          materials: [],
+          cost: null,
+          submission: '담임',
+          evidence: '다음 주 금요일까지 제출',
+        },
       ],
     });
   });
@@ -63,8 +108,12 @@ try {
   assert.equal(await page.locator('#task-list .task-card').count(), 3, '할 일과 일정이 함께 보임');
   await page.click('#new-item');
   assert.equal(await page.locator('#manual-dialog .gcal-pill').getAttribute('aria-pressed'), 'false');
+  await page.mouse.click(10, 10);
+  assert.equal(await page.locator('#manual-dialog').evaluate(d => d.open), false, '바깥을 누르면 닫힘');
   assert.deepEqual(errors, []);
-  console.log('PASS: .ics download contains only confirmed items with KST times; date hint chip fills and confirms an ambiguous date.');
+  console.log(
+    'PASS: .ics download contains only confirmed items with KST times; date hint chip fills and confirms an ambiguous date.',
+  );
 } finally {
   await context.close();
 }

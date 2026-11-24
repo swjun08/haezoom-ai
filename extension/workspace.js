@@ -331,12 +331,12 @@ function makeEditor(item, onSave) {
     form.append(l);
     return input;
   };
-  const category = node('label', '등록 위치', 'full');
+  const category = node('label', '종류', 'full');
   const kind = node('select');
-  kind.setAttribute('aria-label', '등록 위치');
+  kind.setAttribute('aria-label', '종류');
   for (const [value, label] of [
-    ['task', '할 일 · 제출, 신청, 준비하기'],
-    ['schedule', '일정 · 수업, 행사, 참석하기'],
+    ['task', '할 일'],
+    ['schedule', '일정'],
   ]) {
     const option = node('option', label);
     option.value = value;
@@ -371,6 +371,7 @@ function makeEditor(item, onSave) {
             box
               .querySelectorAll('button')
               .forEach(b => b.setAttribute('aria-pressed', String(b === document.activeElement)));
+            checked.checked = true;
             checked.parentElement.classList.add('attention');
           },
           'suggest-chip',
@@ -387,6 +388,7 @@ function makeEditor(item, onSave) {
   const description = field('정리 내용', item.action || item.details, 'textarea', true);
   const notes = field('내 메모', item.notes, 'textarea', true);
   notes.dataset.notes = '';
+  notes.parentElement.hidden = true; // 메모는 아래 '내 메모'에서 한 번만 받습니다.
   notes.placeholder = '기억할 내용이나 준비 상황을 적어 주세요.';
   const materials = field('준비물 (쉼표로 구분)', item.materials?.join(', '));
   const cost = field('비용 (원)', item.cost, 'number');
@@ -398,19 +400,21 @@ function makeEditor(item, onSave) {
   };
   kind.onchange = toggleKind;
   toggleKind();
-  const evidence = node('p', `원문 · ${item.evidence || '직접 입력'}`, 'muted tiny full');
-  form.append(evidence);
   const checked = node('input');
   checked.type = 'checkbox';
   checked.checked = Boolean(item.confirmed);
   const consent = node('label', undefined, 'consent full');
-  consent.append(checked, node('span', '원문을 확인했고 제목과 날짜가 맞습니다'));
+  consent.append(checked, node('span', '제목과 날짜를 확인했어요'));
   form.append(consent);
+  // 날짜를 직접 고르면 확인한 것으로 봅니다.
+  date.addEventListener('change', () => {
+    if (date.value) checked.checked = true;
+  });
   const reminder = node('input');
   reminder.type = 'checkbox';
   reminder.checked = item.reminderEnabled !== false;
   const reminderLabel = node('label', undefined, 'consent full');
-  reminderLabel.append(reminder, node('span', '이 항목의 Chrome 알림 받기'));
+  reminderLabel.append(reminder, node('span', '알림 받기'));
   form.append(reminderLabel);
   const error = node('p', '', 'privacy full');
   error.setAttribute('role', 'alert');
@@ -418,10 +422,10 @@ function makeEditor(item, onSave) {
   const apply = node('button', '수정 저장', 'primary');
   apply.type = 'submit';
   actions.append(
-    apply,
     button('취소', () => {
       form.hidden = true;
     }),
+    apply,
   );
   form.append(error, actions);
   form.onsubmit = async event => {
@@ -686,20 +690,15 @@ function card(item, isDraft = false, { showKind = true, hideTodayChip = false, k
       button(
         '삭제',
         async () => {
-          if (
-            !(await ask(
-              item.kind === 'task' ? '할 일을 삭제할까요?' : '일정을 삭제할까요?',
-              item.calendarEventId
-                ? '해줌 목록에서 삭제합니다. Google에 등록한 일정은 유지돼요.'
-                : '목록에서 이 항목을 삭제합니다.',
-              '삭제',
-            ))
-          )
-            return;
+          // 확인 창 대신 바로 지우고 '실행 취소'를 보여 줍니다.
+          const removed = structuredClone(items.find(x => x.id === item.id) || item);
           items = await request('deleteItem', { id: item.id });
           $('item-dialog').close();
           renderAll();
-          notify('삭제했어요.');
+          offerUndo('삭제했어요', async () => {
+            items = (await request('addItems', { items: [removed] })).items;
+            renderAll();
+          });
         },
         'quiet-danger',
       ),
@@ -767,22 +766,20 @@ function renderItems() {
       node('span', '✓', 'empty-mark'),
       node(
         'h3',
-        items.length
-          ? '여기에 표시할 항목이 없어요'
-          : kindFilter !== 'schedule'
-            ? '아직 가져온 할 일이 없어요'
-            : '아직 등록한 일정이 없어요',
-      ),
-      node(
-        'p',
-        items.length
-          ? '다른 필터를 선택하거나 새 할 일을 추가해 보세요.'
-          : '문서를 가져오거나 위에서 직접 할 일을 추가하세요.',
+        $('search').value.trim()
+          ? `‘${$('search').value.trim()}’ 검색 결과가 없어요`
+          : items.length
+            ? '여기에 표시할 항목이 없어요'
+            : kindFilter !== 'schedule'
+              ? '아직 가져온 할 일이 없어요'
+              : '아직 등록한 일정이 없어요',
       ),
     );
-    const a = node('a', '문서 가져오기 →', 'button-link primary empty-link');
-    a.href = '#analyze';
-    empty.append(a);
+    if (!items.length) {
+      const a = node('a', '공지 가져오기', 'button-link primary empty-link');
+      a.href = '#analyze';
+      empty.append(a);
+    }
     $('task-list').append(empty);
   }
 }
@@ -882,6 +879,16 @@ function openItem(item) {
   $('item-dialog').showModal();
 }
 $('close-item').onclick = () => $('item-dialog').close();
+// 창 바깥(어두운 배경)을 누르면 닫습니다.
+for (const id of ['item-dialog', 'manual-dialog', 'confirm-dialog'])
+  $(id).addEventListener('click', event => {
+    const dialog = $(id);
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    const outside =
+      event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+    if (outside) dialog.close(id === 'confirm-dialog' ? 'cancel' : undefined);
+  });
 function renderDay() {
   const date = new Date(selectedDay + 'T12:00:00+09:00');
   $('day-title').textContent = date.toLocaleDateString('ko-KR', {
@@ -1220,6 +1227,12 @@ $('export-ics').onclick = () => {
 };
 document.addEventListener('click', event => {
   if ($('export-menu').open && !event.target.closest('#export-menu')) $('export-menu').open = false;
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('export-menu').open) {
+    $('export-menu').open = false;
+    $('export-menu').querySelector('summary').focus();
+  }
 });
 // 알림 설정은 바꾸는 즉시 저장합니다.
 $('reminder-form').addEventListener('change', () => $('reminder-form').requestSubmit($('save-reminders')));
