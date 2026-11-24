@@ -9,6 +9,7 @@ import {
   scheduledTime,
   makeGoogleEvent,
 } from './calendar.mjs';
+import { icsFileName, makeIcs } from './ics.mjs';
 import { koreanDate } from './reminders.mjs';
 
 const $ = id => document.getElementById(id);
@@ -577,6 +578,7 @@ function card(item, isDraft = false) {
           },
         ),
       );
+    if (eligibleForCalendar(item)) actions.append(button('캘린더 파일', () => downloadIcs([item])));
     const more = node('details');
     more.append(node('summary', '더 보기'));
     const moreActions = node('div', undefined, 'actions');
@@ -748,6 +750,20 @@ function renderCalendar() {
       ? `Google에 등록 · ${candidates.length}`
       : '등록할 항목 없음';
   $('calendar-state').textContent = calendarConnected ? 'Google 캘린더 연결됨' : 'Google 캘린더 연결 전';
+  const icsCount = items.filter(eligibleForCalendar).length;
+  $('export-ics').disabled = !icsCount;
+  $('export-ics').textContent = icsCount ? `캘린더 파일 받기 · ${icsCount}` : '캘린더 파일 받기';
+}
+function downloadIcs(list) {
+  const { text, count } = makeIcs(list);
+  if (!count) return notify('날짜를 확인한 항목만 캘린더 파일에 담을 수 있어요.');
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
+  const a = node('a');
+  a.href = url;
+  a.download = icsFileName(list.length === 1 ? list : list.filter(eligibleForCalendar));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  notify(`${count}개 항목을 캘린더 파일로 내려받았어요. 파일을 열면 캘린더 앱에 추가돼요.`);
 }
 function openItem(item) {
   $('item-detail').replaceChildren(card(item));
@@ -1060,6 +1076,7 @@ async function syncItems(list) {
   }
 }
 $('sync-calendar').onclick = () => syncItems(items.filter(syncNeeded));
+$('export-ics').onclick = () => downloadIcs(items.filter(eligibleForCalendar));
 for (let hour = 0; hour < 24; hour++) {
   const option = node('option', `${String(hour).padStart(2, '0')}:00`);
   option.value = hour;
