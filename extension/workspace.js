@@ -297,12 +297,11 @@ function renderHome() {
       b.append(
         node('span', x.kind === 'task' ? '마감' : '일정', 'kind-tag ' + x.kind),
         node('strong', x.title),
-        node('small', x.time || (x.kind === 'task' ? '하루 종일' : '시간 미정')),
+        ...(x.time ? [node('small', x.time)] : []),
       );
       return b;
     }),
   );
-  if (!dayItems.length) $('home-events').append(node('p', '이 날은 비어 있어요.', 'muted tiny'));
   $('home-events').append(button('+ 이 날짜에 추가', () => openManual(selectedDay), 'secondary add-on-day'));
 }
 function detailsText(item) {
@@ -613,7 +612,7 @@ function card(item, isDraft = false, { showKind = true } = {}) {
       items = await request('updateItem', { id: item.id, patch, revision: item.revision });
       $('item-dialog').close();
       renderAll();
-      notify('수정한 내용을 저장했어요. 캘린더도 수정하려면 업데이트를 눌러 주세요.');
+      notify('저장했어요.');
     }
   });
   if (!isDraft)
@@ -849,9 +848,7 @@ function renderCalendar() {
   while ((grid.children.length - 7) % 7) grid.append(node('div', undefined, 'day blank'));
   renderDay();
   const unknown = items.filter(x => !x.completed && !calendarDates(x)).length;
-  $('calendar-review').textContent = unknown
-    ? `날짜를 확인해야 하는 항목 ${unknown}개는 달력에 표시하지 않았어요. 내 할 일에서 날짜를 확인해 주세요.`
-    : '';
+  $('calendar-review').textContent = unknown ? `날짜 확인이 필요한 항목 ${unknown}개는 달력에 없어요.` : '';
   const candidates = items.filter(syncNeeded);
   $('sync-calendar').disabled = syncing || !candidates.length;
   $('sync-calendar').textContent = syncing
@@ -859,7 +856,8 @@ function renderCalendar() {
     : candidates.length
       ? `Google에 등록 · ${candidates.length}`
       : '등록할 항목 없음';
-  $('calendar-state').textContent = calendarConnected ? 'Google 캘린더 연결됨' : 'Google 캘린더 연결 전';
+  $('calendar-state').hidden = calendarConnected;
+  $('calendar-state').textContent = 'Google 연결하기';
   const icsCount = items.filter(eligibleForCalendar).length;
   $('export-ics').disabled = !icsCount;
   $('export-ics').textContent = icsCount ? `캘린더 파일 받기 · ${icsCount}` : '캘린더 파일 받기';
@@ -873,7 +871,7 @@ function downloadIcs(list) {
   a.download = icsFileName(list.length === 1 ? list : list.filter(eligibleForCalendar));
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
-  notify(`${count}개 항목을 캘린더 파일로 내려받았어요. 파일을 열면 캘린더 앱에 추가돼요.`);
+  notify(`캘린더 파일을 내려받았어요 (${count}개).`);
 }
 function openItem(item) {
   $('item-dialog-title').textContent = item.kind === 'task' ? '할 일' : '일정';
@@ -901,12 +899,11 @@ function renderDay() {
       b.append(
         node('span', item.kind === 'task' ? '마감' : '일정', 'kind-tag ' + item.kind),
         node('strong', item.title),
-        node('small', item.time || (item.kind === 'task' ? '하루 종일' : '시간 미정')),
+        ...(item.time ? [node('small', item.time)] : []),
       );
       return b;
     }),
   );
-  if (!list.length) $('day-items').append(node('p', '이 날은 비어 있어요.', 'muted tiny'));
   $('day-items').append(button('+ 이 날짜에 추가', () => openManual(selectedDay), 'secondary add-on-day'));
 }
 function renderAll() {
@@ -914,9 +911,7 @@ function renderAll() {
   renderItems();
   renderCalendar();
   $('connect-calendar').textContent = calendarConnected ? '연결 해제' : 'Google 캘린더 연결';
-  $('google-state').textContent = calendarConnected
-    ? '연결됐어요. 확인한 항목을 캘린더에서 등록하세요.'
-    : 'Google 계정에 연결하면 일정과 마감일을 등록할 수 있어요.';
+  $('google-state').textContent = calendarConnected ? '연결됨' : '';
   $('connection-label').textContent = calendarConnected ? 'Google 연결됨 · 설정' : '연결 · 설정';
 }
 function setFilter() {
@@ -1215,9 +1210,7 @@ $('reminder-form').onsubmit = async event => {
       eventMinutes: $('event-reminder').checked ? 30 : 0,
       days: [...document.querySelectorAll('[name=reminder-day]:checked')].map(x => Number(x.value)),
     });
-    $('home-reminders').textContent = $('reminders-enabled').checked
-      ? 'Chrome 알림 켜짐 · 설정'
-      : '마감을 놓치지 않도록 알림 켜기';
+    $('home-reminders').hidden = $('reminders-enabled').checked;
     notify('알림 설정을 저장했어요.');
   } catch (e) {
     notify(e.message, true);
@@ -1352,15 +1345,14 @@ request('calendarStatus')
 request('getReminderSettings')
   .then(({ settings, permission }) => {
     $('reminders-enabled').checked = settings.enabled;
-    $('home-reminders').textContent = settings.enabled ? 'Chrome 알림 켜짐 · 설정' : '마감을 놓치지 않도록 알림 켜기';
+    $('home-reminders').hidden = settings.enabled;
     $('reminder-hour').value = settings.hour;
     $('event-reminder').checked = settings.eventMinutes !== 0;
     document
       .querySelectorAll('[name=reminder-day]')
       .forEach(x => (x.checked = settings.days.includes(Number(x.value))));
     if (permission !== 'granted')
-      $('notification-help').textContent =
-        'Chrome의 알림이 차단되어 있어요. 브라우저와 시스템 알림 설정을 허용해 주세요.';
+      $('notification-help').textContent = 'Chrome 알림이 차단돼 있어요. 시스템 설정에서 허용해 주세요.';
   })
   .catch(e => notify(e.message));
 chrome.storage.onChanged.addListener((changes, area) => {

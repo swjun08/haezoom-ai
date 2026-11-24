@@ -952,3 +952,40 @@ body[data-view] .workspace {
 #item-dialog .item-memo {
   border-top: 1px solid #eef0f3;
 }
+
+/* 3차: 설명 없이 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.warn:empty {
+  display: none;
+}
+.warn {
+  margin-top: 12px;
+  color: var(--overdue);
+}
+#google-state:empty {
+  display: none;
+}
+#google-state {
+  margin: 0 0 12px;
+  font-weight: 600;
+  color: var(--schedule);
+}
+.settings-grid {
+  align-content: start;
+}
+.settings-panel h2 {
+  margin-bottom: 16px;
+}
+#result-empty {
+  justify-content: center;
+}
+#result-empty p {
+  font-size: 14px;
+}

@@ -375,7 +375,6 @@
           success.append(
             create('span', '✓', 'success-icon'),
             create('h2', response.data.added ? '저장했어요' : '이미 저장한 내용이에요'),
-            create('p', '정리 내용과 메모는 내 할 일 · 일정에서 다시 볼 수 있어요.'),
           );
           const actions = create('div', '', 'actions');
           const done = create('button', '이 페이지 계속 보기', 'primary');
@@ -447,9 +446,7 @@
     const editActions = create('div', '', 'actions edit-footer');
     const disclosure = create(
       'span',
-      image || pdf
-        ? '누르면 이 이미지가 해줌 서버를 거쳐 AI(Claude)로 전송돼요.'
-        : '누르면 이 내용이 해줌 서버를 거쳐 AI(Claude)로 전송돼요.',
+      image || pdf ? '이미지가 해줌 서버를 거쳐 AI로 전송돼요.' : '내용이 해줌 서버를 거쳐 AI로 전송돼요.',
       'send-note',
     );
     editActions.append(disclosure, copy, analyze);
