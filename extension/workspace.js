@@ -296,6 +296,35 @@ function makeEditor(item, onSave) {
   title.required = true;
   const dates = calendarDates(item);
   const date = field(item.kind === 'task' ? '확인한 날짜' : '시작 날짜', dates?.start, 'date');
+  const originalText = typeof item.originalDate === 'string' ? item.originalDate : item.date;
+  const hints =
+    !dates?.start && typeof originalText === 'string' && !validDate(originalText)
+      ? (globalThis.haezoomDateHints?.suggestDates(originalText, item.createdAt || new Date()) ?? [])
+      : [];
+  if (hints.length) {
+    const box = node('div', undefined, 'date-suggest full');
+    box.append(
+      node(
+        'p',
+        `원문 ‘${originalText}’을 가져온 날(${globalThis.haezoomDateHints.referenceLabel(item.createdAt || new Date())}) 기준으로 계산했어요. 맞는 날짜를 누르세요.`,
+      ),
+    );
+    for (const hint of hints)
+      box.append(
+        button(
+          hint.label,
+          () => {
+            date.value = hint.date;
+            box
+              .querySelectorAll('button')
+              .forEach(b => b.setAttribute('aria-pressed', String(b === document.activeElement)));
+            checked.parentElement.classList.add('attention');
+          },
+          'suggest-chip',
+        ),
+      );
+    form.append(box);
+  }
   const end = field('종료 날짜 (선택)', item.endDate || (dates?.end !== dates?.start ? dates?.end : ''), 'date');
   const time = field('시작 시간 (선택)', item.time);
   time.placeholder = '14:30';
