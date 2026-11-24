@@ -4,6 +4,4 @@ public/vendor/
 demo/
 booth/
 docs/
-*.html
-*.css
 *.md
