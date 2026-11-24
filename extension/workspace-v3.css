@@ -10,3 +10,10 @@
 .item-preview{font-size:12px;line-height:1.6;color:#737d8b;margin:7px 0 0 33px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item-facts{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px 14px;margin:18px 0 22px}.item-facts dt{color:#7c8591;font-size:12px}.item-facts dd{margin:0;font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.item-memo{border-top:1px solid #edf0f4;padding-top:18px;margin-bottom:18px}.item-memo label{display:grid;gap:8px;font-size:13px;font-weight:600}.item-memo textarea,.manual textarea{width:100%;min-height:84px;resize:vertical;border:1px solid #e1e5eb;border-radius:12px;padding:12px;font-family:inherit;font-size:14px;line-height:1.7;background:#f8f9fb;color:#1b1e26}.memo-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px}.memo-actions button{font-size:12px;padding:8px 14px}.document-summary{margin-bottom:16px}#item-dialog .item-preview{display:none}#item-dialog .item-expansion>details{margin-top:14px}#item-dialog .item-expansion>.actions{border-top:1px solid #edf0f4;margin-top:18px;padding-top:16px}#item-dialog{width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto}#item-dialog .task-card h3{font-size:19px}#item-dialog .item-meta{margin-top:10px}.task-card .edit-form textarea{font-size:14px;line-height:1.7;min-height:84px}
 
 .item-memo textarea,.manual textarea{font-weight:400}
+
+/* 애매한 날짜 후보 */
+.date-suggest{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:#fff7e9;color:#785c26}
+.date-suggest p{width:100%;margin:0;font-size:12px;line-height:1.6}
+.date-suggest .suggest-chip{font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;background:#fff;color:#5c4314;border:1px solid #ecd3a3}
+.date-suggest .suggest-chip[aria-pressed=true]{background:#1b1e26;color:#fff;border-color:#1b1e26}
+.consent.attention{background:#eef6f1;border-radius:10px;padding:8px 10px;transition:background .3s}

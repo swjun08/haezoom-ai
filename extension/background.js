@@ -288,7 +288,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (message.type === 'openPdfUpload') {
       const tabId = sender.url?.startsWith(chrome.runtime.getURL('')) ? message.payload?.tabId : sender.tab?.id;
       if (!Number.isInteger(tabId)) throw new Error('웹페이지에서 다시 열어 주세요.');
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['review.js'] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['date-hints.js', 'review.js'] });
       await chrome.tabs.sendMessage(tabId, { type: 'showPdfUpload' });
       return true;
     }
@@ -499,7 +499,10 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       if (!tab?.id || !/^(https?|file):/.test(tab.url || ''))
         throw new Error('웹페이지 또는 PDF 파일에서 캡쳐해 주세요.');
       try {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['review.js', 'capture.js'] });
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['date-hints.js', 'review.js', 'capture.js'],
+        });
       } catch {
         throw new Error(
           '이 탭에 캡쳐 도구를 실행할 수 없습니다. 웹페이지를 새로고침하거나 PDF 파일 접근 권한을 확인해 주세요.',
@@ -553,7 +556,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     const [active] = sender.tab ? [] : await chrome.tabs.query({ active: true, currentWindow: true });
     const tab = sender.tab || active;
     if (!tab?.id || !/^(https?|file):/.test(tab.url || '')) throw new Error('공지 웹페이지에서 문장을 선택해 주세요.');
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['review.js'] });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['date-hints.js', 'review.js'] });
     const result = await chrome.tabs.sendMessage(tab.id, { type: 'showSelectionReview', payload: { text } });
     if (!result?.ok) throw new Error(result?.error || '내용 확인 창을 열지 못했어요.');
   };

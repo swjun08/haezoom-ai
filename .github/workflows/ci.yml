@@ -39,3 +39,4 @@ jobs:
       - run: node tests/global.mjs
       - run: node tests/offscreen.mjs
       - run: node tests/pdf.mjs
+      - run: node tests/enhance-browser.mjs
