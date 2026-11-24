@@ -63,7 +63,7 @@
           <div class="view-heading">
             <div>
               <p id="home-date" class="overline"></p>
-              <h1>오늘을 가볍게.</h1>
+              <h1>오늘</h1>
             </div>
             <a href="#analyze" class="button-link primary">공지 가져오기</a>
           </div>
@@ -71,26 +71,24 @@
             <section class="focus-panel">
               <div class="panel-heading">
                 <div>
-                  <h2>먼저 확인할 일</h2>
-                  <p id="home-description"></p>
+                  <h2>할 일</h2>
+                  <p id="home-description" hidden></p>
                 </div>
                 <button id="home-add" class="secondary small">+ 직접 추가</button>
               </div>
               <div id="home-review"></div>
               <div id="home-list"></div>
-              <a href="#tasks" class="list-footer">모든 할 일 · 일정 보기</a>
             </section>
             <section class="home-calendar">
               <div class="panel-heading">
                 <h2 id="mini-month"></h2>
-                <a href="#calendar">전체 달력</a>
               </div>
               <div id="mini-calendar"></div>
               <div class="home-agenda">
                 <h3 id="home-agenda-title">다가오는 일정</h3>
                 <div id="home-events"></div>
               </div>
-              <a href="#settings" id="home-reminders" class="reminder-link">Chrome 알림 설정</a>
+              <a href="#settings" id="home-reminders" class="reminder-link" hidden>알림 켜기</a>
             </section>
           </div>
         </section>
@@ -138,7 +136,6 @@
               <summary class="secondary">캘린더로 내보내기</summary>
               <div class="menu-panel">
                 <button id="export-ics" class="menu-item">캘린더 파일 받기</button>
-                <p class="menu-note">Apple·삼성·Outlook 캘린더에서 열 수 있어요</p>
                 <button id="sync-calendar" class="menu-item">Google에 등록</button>
                 <a href="#settings" id="calendar-state" class="menu-note">Google 연결 설정</a>
               </div>
@@ -206,31 +203,21 @@
                   <p class="tiny muted">여러 공지가 묶여 있다면 필요한 페이지부터 정리하세요.</p>
                 </div>
               </div>
-              <label for="input-text" id="input-label">공지 내용</label
+              <label for="input-text" id="input-label" class="sr-only">공지 내용</label
               ><textarea
                 id="input-text"
                 maxlength="45000"
                 placeholder="학교 공지나 수업 안내를 붙여 넣으세요."
               ></textarea>
               <div class="input-bottom">
-                <p>원문은 분석에 동의한 후에만 전송해요.</p>
+                <p>해줌 서버를 거쳐 AI로 전송돼요.</p>
                 <button id="run" class="primary">AI로 정리하기</button>
               </div>
             </section>
             <section class="panel result-panel">
-              <div class="panel-heading"><h2>분류와 날짜를 확인해 주세요</h2></div>
+              <div class="panel-heading"><h2>결과</h2></div>
               <div id="result-empty" class="empty">
-                <h3>할 일과 일정으로 나눠드려요</h3>
-                <div class="explain-types">
-                  <div>
-                    <span class="kind-tag task">할 일</span>
-                    <p>신청서 제출 · 준비물 챙기기</p>
-                  </div>
-                  <div>
-                    <span class="kind-tag schedule">일정</span>
-                    <p>체험학습 · 수업 · 회의 참석</p>
-                  </div>
-                </div>
+                <p class="muted">정리한 할 일과 일정이 여기에 나와요.</p>
               </div>
               <div id="analysis-result" hidden>
                 <span id="sample-badge" class="badge" hidden>미리 작성된 예시</span>
@@ -253,7 +240,6 @@
           <div class="settings-grid">
             <section class="panel settings-panel">
               <h2>Chrome 알림</h2>
-              <p>Google 연결 없이 마감과 일정을 알려드려요.</p>
               <form id="reminder-form">
                 <label class="toggle-row"
                   ><span>Chrome 알림 받기</span><input id="reminders-enabled" type="checkbox" role="switch"
@@ -266,8 +252,7 @@
                 </fieldset>
                 <label
                   >알림 시간
-                  <select id="reminder-hour" aria-label="알림 시간"></select
-                  ><span class="tiny muted"> 한국 시간</span></label
+                  <select id="reminder-hour" aria-label="알림 시간"></select></label
                 ><label class="toggle-row"
                   ><span>일정 시작 30분 전에도 알림</span><input id="event-reminder" type="checkbox" checked
                 /></label>
@@ -276,45 +261,28 @@
                   ><button id="test-notification" type="button" class="secondary">알림 확인</button>
                 </div>
               </form>
-              <p id="notification-help" class="tiny muted">
-                Chrome이 열려 있을 때 알림을 받습니다. 24시간 이내 놓친 알림은 다시 열면 확인할 수 있어요.
-              </p>
+              <p id="notification-help" class="tiny warn"></p>
             </section>
             <section class="panel settings-panel">
-              <h2>Google 캘린더 <span class="optional">선택</span></h2>
+              <h2>Google 캘린더</h2>
               <p id="google-state"></p>
               <button id="connect-calendar" class="secondary">Google 캘린더 연결</button>
-              <p class="tiny muted">
-                원하는 항목만 Google에도 등록할 수 있어요. 해줌에서 완료해도 Google 일정은 유지돼요.
-              </p>
-              <details>
-                <summary>연결 문제 해결</summary>
-                <p>관리자에게 확장 ID를 전달해 Google OAuth 설정을 확인해 주세요.</p>
-                <code id="extension-id"></code>
-              </details>
+              <code id="extension-id" hidden></code>
             </section>
-            <details class="panel settings-panel secondary-settings">
-              <summary>해줌 버튼 표시</summary>
-              <p>웹페이지 오른쪽 아래에서 바로 공지를 가져올 수 있어요.</p>
+            <section class="panel settings-panel">
+              <h2>웹페이지 h. 버튼</h2>
               <button id="global-helper" class="secondary">표시 설정 확인 중</button>
-              <p class="tiny muted">Chrome 설정과 웹스토어 등 제한된 페이지에서는 사용할 수 없어요.</p>
-            </details>
-            <details class="panel settings-panel secondary-settings">
-              <summary>데이터 백업</summary>
-              <p>할 일과 일정은 이 Chrome 프로필에 저장됩니다.</p>
+            </section>
+            <section class="panel settings-panel">
+              <h2>백업</h2>
               <div class="actions">
                 <button id="export-json" class="secondary">내려받기</button
                 ><button id="import-json" class="secondary">가져오기</button
                 ><input id="backup-file" type="file" accept="application/json,.json" hidden />
               </div>
-            </details>
+            </section>
             <details class="panel settings-panel secondary-settings">
-              <summary>사용 방법 · 개인정보</summary>
-              <ol>
-                <li>웹페이지의 해줌 버튼에서 공지를 가져옵니다.</li>
-                <li>할 일·일정과 날짜를 확인하고 저장합니다.</li>
-                <li>오늘 화면에서 확인하고 완료합니다.</li>
-              </ol>
+              <summary>개인정보</summary>
               <p>
                 분석할 때 선택한 원문·파일을 해줌 서버를 거쳐 Claude에 전송합니다. 날짜를 확인한 미완료 항목에만 알림을
                 보냅니다.
