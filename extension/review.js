@@ -185,7 +185,7 @@
         count = create('span'),
         save = create('button', '확인하고 저장', 'primary');
       // 저장 버튼 옆 'Google 캘린더' 알약: 켜 두면 저장할 때 Google 캘린더에도 등록합니다(설정은 기억됨).
-      const gcal = create('button', 'Google 캘린더', 'pill-toggle');
+      const gcal = create('button', 'Google 캘린더에도 등록', 'pill-toggle');
       gcal.setAttribute('aria-pressed', 'false');
       chrome.runtime
         .sendMessage({ type: 'getCalendarAutoSync' })
