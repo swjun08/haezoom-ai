@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validateItem,importBackup} from '../extension/item-store.mjs';
+const item={id:crypto.randomUUID(),kind:'task',title:'신청서 제출',date:'2026-11-20',confirmed:true,needs_review:false,completed:false,calendarEventId:'private',calendarFingerprint:'private'};
+test('백업 복원은 새 ID를 발급하고 외부 캘린더 연결 정보를 제거한다',()=>{const [restored]=importBackup({version:3,items:[item]});assert.notEqual(restored.id,item.id);assert.equal(restored.calendarEventId,undefined);assert.equal(restored.title,item.title);});
+test('가져온 백업의 자료형, 크기, 출처와 상태를 검사한다',()=>{assert.throws(()=>importBackup({version:1,items:[item]}));assert.throws(()=>validateItem({...item,cost:-1}));assert.throws(()=>validateItem({...item,confirmed:'true'}));assert.throws(()=>validateItem({...item,source:{title:'x',url:'javascript:alert(1)'}}));});

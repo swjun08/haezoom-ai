@@ -4,6 +4,7 @@ export function validDate(value) {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+export function normalizeExplicitDate(value){if(typeof value!=='string')return value;const m=value.match(/^\s*(20\d{2})년\s*(\d{1,2})월\s*(\d{1,2})일(?:\s*\([^)]*\))?(?:\s*(?:오전|오후)\s*\d{1,2}시(?:\s*\d{1,2}분)?)?\s*$/);if(!m)return value;const date=m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');return validDate(date)?date:value;}
 function boundedText(value, name, nullable = false) {
   if (nullable && value === null) return null;
   if (typeof value !== 'string' || value.length > 5000) throw new Error(`${name} 형식이 올바르지 않습니다.`);
@@ -18,7 +19,7 @@ export function validateAnalysis(result) {
     const title = boundedText(item.title, '제목');
     if (!title) throw new Error('항목 제목이 없습니다.');
     const date = boundedText(kind === 'task' ? item.deadline : item.date, '날짜', true);
-    const common = { title, evidence: boundedText(item.evidence, '근거'), needs_review: item.needs_review || !validDate(date) };
+    const common = { title, notes: boundedText(item.notes ?? '', '메모'), evidence: boundedText(item.evidence, '근거'), needs_review: item.needs_review || !validDate(date) };
     if (kind === 'schedule') return { ...common, date, time: boundedText(item.time, '시간', true), location: boundedText(item.location, '장소', true), details: boundedText(item.details, '설명') };
     if (!Array.isArray(item.materials) || item.materials.length > 100 || (item.cost !== null && (typeof item.cost !== 'number' || !Number.isFinite(item.cost) || item.cost < 0))) throw new Error('준비물 또는 비용 형식이 올바르지 않습니다.');
     return { ...common, deadline: date, action: boundedText(item.action, '행동'), materials: item.materials.map(value => boundedText(value, '준비물')), cost: item.cost, submission: boundedText(item.submission, '제출처', true) };
@@ -28,5 +29,5 @@ export function validateAnalysis(result) {
 
 export function makeItems(result, source, newId = () => crypto.randomUUID()) {
   const checked = validateAnalysis(result);
-  return [ ...checked.tasks.map(item => ({ ...item, kind: 'task', date: item.deadline })), ...checked.schedules.map(item => ({ ...item, kind: 'schedule' })) ].map(item => ({ ...item, id: newId(), source, confirmed: false, completed: false, revision: 1, createdAt: new Date().toISOString() }));
+  return [ ...checked.tasks.map(item => ({ ...item, kind: 'task', date: item.deadline })), ...checked.schedules.map(item => ({ ...item, kind: 'schedule' })) ].map(item => ({ ...item, originalDate:item.date, date:normalizeExplicitDate(item.date), id: newId(), source, documentSummary: checked.summary, confirmed: false, completed: false, revision: 1, createdAt: new Date().toISOString() }));
 }

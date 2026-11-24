@@ -39,7 +39,7 @@ export async function analyzeImageDataUrl(dataUrl, contextText = '') {
   const match = typeof dataUrl === 'string' && dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/);
   if (!match) throw new Error('캡쳐 이미지 형식이 올바르지 않습니다.');
   const bytes = Uint8Array.from(atob(match[2]), character => character.charCodeAt(0));
-  if (!bytes.length || bytes.length > MAX_CAPTURE_SIZE) throw new Error('캡쳐 이미지는 8MB 이하로 선택해 주세요.');
+  if (!bytes.length || bytes.length > MAX_CAPTURE_SIZE) throw new Error('캡쳐 이미지는 5MB 이하로 선택해 주세요.');
   const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].slice('image/'.length);
   return analyzeDocument(new File([bytes], `capture.${extension}`, { type: match[1] }), contextText);
 }

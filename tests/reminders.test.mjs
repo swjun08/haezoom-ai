@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {reminderPlan, koreanDate,validateReminderSettings} from '../extension/reminders.mjs';
+const item={id:'a',kind:'task',date:'2026-11-20',title:'신청',confirmed:true,needs_review:false,completed:false};
+const settings={enabled:true,hour:9,days:[3,1,0],enabledAt:0};
+const now=Date.parse('2026-11-17T09:01:00+09:00');
+test('3일 전 한국 시간 9시에 알림을 발송하고 다음 시점을 예약한다',()=>{const p=reminderPlan([item],settings,{},now);assert.equal(p.due.length,1);assert.equal(p.due[0].days,3);assert.equal(p.next,Date.parse('2026-11-19T09:00:00+09:00'));});
+test('재시작 복구는 발송 기록을 확인하여 중복 없이 동작한다',()=>{const p=reminderPlan([item],settings,{'a:2026-11-20:3':now},now);assert.equal(p.due.length,0);});
+test('확인 전, 완료, 과거 항목과 알림 비활성은 발송하지 않는다',()=>{for(const patch of [{completed:true},{confirmed:false},{needs_review:true},{date:'2026-11-16'}])assert.equal(reminderPlan([{...item,...patch}],settings,{},now).due.length,0);assert.equal(reminderPlan([item],{...settings,enabled:false},{},now).next,null);});
+test('늦게 켜도 활성화 전 알림을 몰아서 보내지 않는다',()=>{assert.equal(reminderPlan([item],{...settings,enabledAt:now},{},now).due.length,0);});
+test('날짜 변경시 새로운 일정으로 계산하고 24시간 이전 알림은 건너뛴다',()=>{const p=reminderPlan([{...item,date:'2026-11-21'}],settings,{},now);assert.equal(p.due.length,0);assert.equal(p.next,Date.parse('2026-11-18T09:00:00+09:00'));assert.equal(reminderPlan([item],settings,{},Date.parse('2026-11-18T10:00:00+09:00')).due.length,0);});
+test('장치 시간대와 무관하게 한국 날짜와 윤년을 계산한다',()=>{assert.equal(koreanDate(Date.parse('2026-11-17T16:00:00Z')),'2026-11-18');assert.throws(()=>validateReminderSettings({...settings,hour:24}));assert.throws(()=>validateReminderSettings({...settings,days:[]}));});
+test('일정은 시작 30분 전 알림을 예약하고 시작 후에는 발송하지 않는다',()=>{const event={...item,kind:'schedule',date:'2026-11-17',time:'14:00'};const at=Date.parse('2026-11-17T13:31:00+09:00');const p=reminderPlan([event],{...settings,eventMinutes:30},{},at);assert.equal(p.due[0].minutes,30);assert.equal(reminderPlan([event],settings,{},at+3600000).due.length,0);});
+test('항목별 알림 끄기는 전체 알림을 켜도 유지한다',()=>{assert.equal(reminderPlan([{...item,reminderEnabled:false}],settings,{},now).due.length,0);});

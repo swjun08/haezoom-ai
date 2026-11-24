@@ -26,7 +26,7 @@ try {
   const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: button.backendDOMNodeId });
   await page.mouse.click((model.content[0] + model.content[4]) / 2, (model.content[1] + model.content[5]) / 2);
   const nodes = (await cdp.send('Accessibility.getFullAXTree')).nodes;
-  assert.ok(nodes.some(entry => entry.name?.value === 'PDF 업로드 ↗' && !entry.ignored));
+  assert.ok(nodes.some(entry => entry.name?.value === 'PDF' && !entry.ignored));
   await mkdir('docs/screenshots', { recursive: true }); await page.screenshot({ path: 'docs/screenshots/09-local-pdf.png' });
   console.log('PASS: actual local PDF viewer with circular launcher and menu.');
 } finally { await context.close(); }
