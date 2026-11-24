@@ -20,7 +20,7 @@ try {
   assert.equal(result.ok, true); assert.equal(result.data, true);
   for (const origin of ['https://school.example', 'http://notice.example']) {
     const page = await context.newPage();
-    await page.route(`${origin}/**`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>공지</title><h1>학교 공지</h1><p>11월 12일까지 신청서를 제출해 주세요.</p>' }));
+    await page.route(`${origin}/**`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>공지</title><h1>학교 공지</h1><p>11월 12일까지 신청서를 제출해 주세요.</p>' }));
     await page.goto(`${origin}/notice`);
     await page.locator('[data-haezoom-launcher]').waitFor({ state: 'visible' });
   }
@@ -38,7 +38,7 @@ try {
   assert.equal(notice.frames().length, 1, 'selection review has no iframe');
   const cdp = await context.newCDPSession(notice);
   const tree = (await cdp.send('Accessibility.getFullAXTree')).nodes;
-  const text = tree.find(node => node.role?.value === 'textbox' && node.name?.value === '읽어온 내용' && !node.ignored);
+  const text = tree.find(node => node.role?.value === 'textbox' && node.name?.value === '가져온 내용' && !node.ignored);
   assert.equal(text.value.value, '11월 12일까지 신청서를 제출해 주세요.');
   await notice.keyboard.press('Escape');
   assert.equal(await notice.locator('[data-haezoom-review]').count(), 0);

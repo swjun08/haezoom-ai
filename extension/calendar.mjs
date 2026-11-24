@@ -17,11 +17,11 @@ export function googleEventId(itemId) {
   return `a${itemId.replaceAll('-', '').toLowerCase()}`;
 }
 
-function calendarDates(item) {
+export function calendarDates(item) {
   if (item.kind !== 'schedule') {
     return validDate(item.date) ? { start: item.date, end: item.date } : null;
   }
-  if (validDate(item.date)) return { start: item.date, end: item.date };
+  if (validDate(item.date)) { const end=item.endDate || item.date; return validDate(end) && end>=item.date ? {start:item.date,end} : null; }
   if (typeof item.date !== 'string') return null;
 
   const iso = item.date.match(/^\s*(20\d{2}-\d{2}-\d{2})(?:\s*[~〜～–—-]\s*(20\d{2}-\d{2}-\d{2}))?\s*$/);
@@ -43,10 +43,10 @@ function calendarDates(item) {
 
 export function eligibleForCalendar(item) {
   if (!item || item.completed || !item.title?.trim() || !calendarDates(item)) return false;
-  return item.kind === 'schedule' || (item.confirmed && !item.needs_review);
+  return Boolean(item.confirmed && !item.needs_review);
 }
 
-function scheduledTime(value) {
+export function scheduledTime(value) {
   if (typeof value !== 'string') return null;
   const clock = value.match(/^(오전|오후)\s*(\d{1,2})(?:시)?(?:\s*(\d{1,2})분?)?$/);
   if (clock) {
@@ -77,7 +77,9 @@ export function makeGoogleEvent(item) {
   }
   const dates = calendarDates(item);
   const details = [
-    item.action || item.details,
+    item.kind==='task'?item.action:item.details,
+    item.notes ? `내 메모: ${item.notes}` : '',
+    item.documentSummary ? `공지 요약: ${item.documentSummary}` : '',
     item.materials?.length ? `준비물: ${item.materials.join(', ')}` : '',
     item.cost != null ? `비용: ${item.cost.toLocaleString()}원` : '',
     item.submission ? `제출처: ${item.submission}` : '',
@@ -92,9 +94,9 @@ export function makeGoogleEvent(item) {
     event.start = { date: dates.start };
     event.end = { date: nextDate(dates.end) };
   } else {
-    const start = Date.parse(`${dates.start}T${time}:00+09:00`);
+    const start = Date.parse(`${dates.start}T${time}:00+09:00`);const finish=scheduledTime(item.endTime);const end=finish?Date.parse(`${dates.end}T${finish}:00+09:00`):start+3600000;if(end<=start)throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
     event.start = { dateTime: new Date(start).toISOString() };
-    event.end = { dateTime: new Date(start + 60 * 60 * 1000).toISOString() };
+    event.end = { dateTime: new Date(end).toISOString() };
   }
   return event;
 }
@@ -110,7 +112,7 @@ async function checkResponse(response) {
 }
 
 export async function syncGoogleEvent(token, item, fetcher = fetch, timeoutMs = 15000) {
-  const id = googleEventId(item.id);
+  const id = googleEventId(item.id) + (item.calendarGeneration ? `v${item.calendarGeneration}` : '');
   const event = makeGoogleEvent(item);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const url = `${calendarApi}/${encodeURIComponent(id)}`;
@@ -131,10 +133,13 @@ export async function syncGoogleEvent(token, item, fetcher = fetch, timeoutMs = 
   };
   const existing = await request(url, { headers });
   if (existing.ok) {
+    const body = existing.json ? await existing.json().catch(() => ({})) : {};
+    if (body.status === 'cancelled') throw new GoogleCalendarError('Google에서 삭제한 일정이에요. 다시 등록해 주세요.', 410);
     const response = await request(url, { method: 'PATCH', headers, body: JSON.stringify(event) });
     await checkResponse(response);
     return { id, action: 'updated' };
   }
+  if (existing.status === 410) throw new GoogleCalendarError('Google에서 삭제한 일정이에요. 다시 등록해 주세요.', 410);
   if (existing.status !== 404) await checkResponse(existing);
   const response = await request(calendarApi, { method: 'POST', headers, body: JSON.stringify({ ...event, id }) });
   if (response.status === 409) {
@@ -144,4 +149,18 @@ export async function syncGoogleEvent(token, item, fetcher = fetch, timeoutMs = 
   }
   await checkResponse(response);
   return { id, action: 'created' };
+}
+
+export function calendarFingerprint(item) { return JSON.stringify(makeGoogleEvent(item)); }
+export async function removeGoogleEvent(token, item, fetcher = fetch) {
+  const id = item.calendarEventId;
+  if (!id || !/^[a-v0-9]{5,1024}$/.test(id)) throw new Error('등록된 캘린더 일정이 없습니다.');
+  const response = await fetcher(calendarApi + '/' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(15000) });
+  if (![404,410].includes(response.status)) await checkResponse(response);
+}
+export function calendarErrorMessage(error) {
+  if (error?.status === 401) return 'Google 연결이 만료됐어요. 다시 연결해 주세요.';
+  if (error?.status === 403) return '캘린더 접근 권한이 없어요. 연결을 해제한 뒤 일정 권한을 허용해 주세요.';
+  if (error?.status === 429) return 'Google 요청이 많아요. 잠시 뒤 다시 시도해 주세요.';
+  return error?.message || '캘린더에 연결하지 못했어요. 네트워크를 확인해 주세요.';
 }

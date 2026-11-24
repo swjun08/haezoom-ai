@@ -1,0 +1,74 @@
+[
+  {
+    "action": "학생 정보(초등 학년 반 번, 성명), 보호자 성명과 서명, 건강 상태(특이사항 없음 또는 기저질환 있음 및 질환명)를 작성하여 제출합니다.",
+    "completed": false,
+    "confirmed": true,
+    "cost": null,
+    "createdAt": "2026-11-17T03:45:07.931Z",
+    "date": null,
+    "deadline": null,
+    "evidence": "가정통신문 하단 절취선 아래 '2026학년도 수영실기교육 참가 신청서' 항목. 제출 기한과 제출처는 문서에 명시되지 않음.",
+    "id": "7060de32-b58c-421e-8fe7-4b76afeba635",
+    "kind": "task",
+    "materials": [
+      "2026학년도 수영실기교육 참가 신청서"
+    ],
+    "needs_review": false,
+    "originalDate": null,
+    "revision": 1,
+    "source": {
+      "title": "school-notices.pdf · 1페이지",
+      "url": "https://school.example/notice"
+    },
+    "submission": null,
+    "title": "수영실기교육 참가 신청서 작성 및 제출"
+  },
+  {
+    "action": "교육 당일 필요한 준비물을 준비합니다.",
+    "completed": false,
+    "confirmed": true,
+    "cost": 0,
+    "createdAt": "2026-11-17T03:45:07.931Z",
+    "date": null,
+    "deadline": null,
+    "evidence": "'4. 준비물' 항목: 수영복, 수영모, 수경, 대형 타월, 수영가방 (수강료 및 이동 버스비 전액 무료).",
+    "id": "ca36b013-f73a-4a77-b16d-c96f00ef6c1a",
+    "kind": "task",
+    "materials": [
+      "수영복",
+      "수영모",
+      "수경",
+      "대형 타월",
+      "수영가방"
+    ],
+    "needs_review": false,
+    "originalDate": null,
+    "revision": 1,
+    "source": {
+      "title": "school-notices.pdf · 1페이지",
+      "url": "https://school.example/notice"
+    },
+    "submission": null,
+    "title": "수영 준비물 챙기기"
+  },
+  {
+    "completed": false,
+    "confirmed": true,
+    "createdAt": "2026-11-17T03:45:07.931Z",
+    "date": "2026년 5월 18일(월) ~ 5월 22일(금) [5일간]",
+    "details": "대상: 3, 4학년 재학생 전원. 주요 교육 내용: 생존수영(물 적응 훈련, 잎새뜨기, 구명조끼 착용법, 도구 활용 생존법, 전문 강사 지도)과 수영실기(자유형 발자기 및 팔젓기, 물속 호흡법, 수영 안전수칙, 수준별 모둠 진행).",
+    "evidence": "'1. 기간 및 대상', '2. 장소 및 교육 방법', '3. 주요 교육 내용' 표. 시간은 문서에 없음. 장소명의 '○○구'는 원문 표기 그대로이며 판독 불가가 아닌 미기재 상태임.",
+    "id": "2f11fd8a-3877-4ea5-8433-6e20c85971bc",
+    "kind": "schedule",
+    "location": "[○○구 국민체육센터 수영장] (학교 전세버스로 이동)",
+    "needs_review": false,
+    "originalDate": "2026년 5월 18일(월) ~ 5월 22일(금) [5일간]",
+    "revision": 1,
+    "source": {
+      "title": "school-notices.pdf · 1페이지",
+      "url": "https://school.example/notice"
+    },
+    "time": null,
+    "title": "2026학년도 3~4학년 생존수영 및 수영실기교육"
+  }
+]

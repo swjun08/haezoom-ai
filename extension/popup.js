@@ -17,8 +17,8 @@ globalButton.onclick = async () => {
     location.reload();
   } catch (error) { status.textContent = error.message || '해줌 버튼 설정을 변경하지 못했어요.'; }
 };
-document.getElementById('tasks').onclick = () => open('tasks');
-document.getElementById('upload').onclick = () => open('upload');
+document.getElementById('tasks').onclick = () => open('home');
+document.getElementById('upload').onclick=async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});if(!tab?.id||!/^https?:/.test(tab.url||''))return open('upload');try{const r=await chrome.runtime.sendMessage({type:'openPdfUpload',payload:{tabId:tab.id}});if(!r?.ok)throw new Error(r?.error);window.close();}catch{open('upload');}};
 document.getElementById('settings').onclick = () => open('settings');
 document.getElementById('capture').onclick = async () => {
   const button = document.getElementById('capture');

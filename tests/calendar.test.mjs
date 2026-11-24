@@ -32,10 +32,11 @@ test('한국 시간으로 확인된 행사 시간과 상세 정보를 Calendar �
   assert.match(event.description, /원문 근거:/);
 });
 
-test('날짜가 있는 일정은 원문 확인 없이 바로 캘린더에 등록할 수 있다', () => {
+test('일정도 원문 확인을 마쳐야 캘린더에 등록할 수 있다', () => {
   const schedule = { ...item, confirmed: false, needs_review: true };
-  assert.equal(eligibleForCalendar(schedule), true);
-  assert.deepEqual(makeGoogleEvent(schedule).start, { dateTime: '2026-11-18T05:30:00.000Z' });
+  assert.equal(eligibleForCalendar(schedule), false);
+  assert.throws(()=>makeGoogleEvent(schedule));
+  assert.equal(eligibleForCalendar({...schedule,confirmed:true,needs_review:false}),true);
   assert.equal(eligibleForCalendar({ ...schedule, completed: true }), false);
   assert.equal(eligibleForCalendar({ ...schedule, date: null }), false);
 });
@@ -43,8 +44,8 @@ test('날짜가 있는 일정은 원문 확인 없이 바로 캘린더에 등록
 test('명시된 한국어 날짜 범위 일정을 시작일과 종료일을 포함해 종일 등록한다', () => {
   const schedule = {
     ...item,
-    confirmed: false,
-    needs_review: true,
+    confirmed: true,
+    needs_review: false,
     date: '2026년 5월 18일(월) ~ 5월 22일(금) [5일간]'
   };
   assert.equal(eligibleForCalendar(schedule), true);
@@ -121,4 +122,16 @@ test('응답하지 않는 Calendar API는 제한 시간 안에 취소하고 오�
     error => error instanceof GoogleCalendarError && error.status === 0 && /시간이 초과/.test(error.message)
   );
   assert.equal(aborted, true);
+});
+
+test('여러 날 일정 종료일은 포함하고 다음 날을 배타 종료일로 전송한다',()=>{
+  const event=makeGoogleEvent({...item,date:'2026-11-18',endDate:'2026-11-21'});
+  assert.deepEqual(event.end,{date:'2026-11-22'});
+  assert.equal(eligibleForCalendar({...item,endDate:'2026-11-16'}),false);
+});
+test('Google에서 삭제한 이벤트는 410으로 알려 안전하게 재등록한다',async()=>{
+  await assert.rejects(syncGoogleEvent('token',item,async()=>new Response(JSON.stringify({status:'cancelled'}),{status:200})),error=>error.status===410);
+  await assert.rejects(syncGoogleEvent('token',item,async()=>new Response('',{status:410})),error=>error.status===410);
+  const calls=[];await syncGoogleEvent('token',{...item,calendarGeneration:2},async(url)=>{calls.push(url);return {ok:false,status:404,json:async()=>({})};}).catch(()=>{});
+  assert.ok(calls[0].endsWith('v2'));
 });

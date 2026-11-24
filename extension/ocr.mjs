@@ -54,3 +54,10 @@ export async function extractText(file, progress = () => {}) {
     } finally { await loadingTask.destroy(); }
   } finally { if (worker) await worker.terminate(); }
 }
+
+// Render only the requested page; keeps scans, tables and layout intact.
+export async function renderPdfPage(file,pageNumber=1){
+ const pdfjs=await import('./vendor/pdfjs/pdf.min.mjs');pdfjs.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdfjs/pdf.worker.min.mjs',import.meta.url).href;
+ const task=pdfjs.getDocument({data:await file.arrayBuffer()});
+ try{const pdf=await task.promise;if(pdf.numPages>30)throw new Error('PDF는 30페이지 이하로 선택해 주세요.');if(!Number.isInteger(pageNumber)||pageNumber<1||pageNumber>pdf.numPages)throw new Error('페이지를 확인해 주세요.');const page=await pdf.getPage(pageNumber),base=page.getViewport({scale:1}),scale=Math.min(2,1800/Math.max(base.width,base.height)),viewport=page.getViewport({scale});const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);await page.render({canvasContext:canvas.getContext('2d'),viewport,intent:'print'}).promise;const image=canvas.toDataURL('image/png');canvas.width=canvas.height=0;return {image,pages:pdf.numPages,page:pageNumber};}finally{await task.destroy();}
+}

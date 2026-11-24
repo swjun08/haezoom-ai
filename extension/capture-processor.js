@@ -8,3 +8,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   })().then(text => reply({ ok: true, text }), () => reply({ ok: false, error: '글자를 읽지 못했어요. 인터넷 연결과 이미지 선명도를 확인해 주세요.' }));
   return true;
 });
+chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+ if(sender.id!==chrome.runtime.id||sender.tab||message.type!=='renderPdfPageInternal')return false;
+ (async()=>{const {renderPdfPage}=await import('./ocr.mjs');const {data,page}=message.payload||{};if(typeof data!=='string'||!data.startsWith('data:application/pdf;base64,')||data.length>28*1024*1024)throw new Error('20MB 이하 PDF를 선택해 주세요.');const blob=await(await fetch(data)).blob();return renderPdfPage(new File([blob],'document.pdf',{type:'application/pdf'}),page);})().then(data=>reply({ok:true,data}),error=>reply({ok:false,error:error.message}));return true;
+});
