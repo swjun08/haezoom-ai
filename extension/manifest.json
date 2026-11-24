@@ -11,7 +11,8 @@
     "offscreen",
     "identity",
     "alarms",
-    "notifications"
+    "notifications",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://tessdata.projectnaptha.com/*",
@@ -65,5 +66,21 @@
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "commands": {
+    "open-helper": {
+      "suggested_key": {
+        "default": "Alt+Shift+H",
+        "mac": "Alt+Shift+H"
+      },
+      "description": "선택한 문장 정리하기 (선택이 없으면 해줌 메뉴 열기)"
+    },
+    "capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "화면 캡처로 공지 가져오기"
+    }
+  }
 }
