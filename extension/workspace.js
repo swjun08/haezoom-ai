@@ -244,7 +244,7 @@ function renderHome() {
       node('span', name),
       node('span', String(list === groups[3][1] ? upcoming.length : list.length), 'count'),
     );
-    $('home-list').append(title, ...list.map(x => listCard(x)));
+    $('home-list').append(title, ...list.map(x => listCard(x, { showKind: false })));
   }
   if (upcoming.length > 5) {
     const more = node('a', `다가오는 할 일 ${upcoming.length - 5}개 더 보기`, 'more-link');
@@ -729,6 +729,7 @@ function renderItems() {
   $('nav-count').textContent = items.filter(x => !x.completed).length;
   const pending = items.filter(x => !x.completed && x.kind === kindFilter),
     today = koreanDate();
+  $('task-stats').hidden = true;
   $('task-stats').replaceChildren(
     ...[
       ['진행 중', pending.length],
@@ -1185,8 +1186,19 @@ async function syncItems(list) {
     renderAll();
   }
 }
-$('sync-calendar').onclick = () => syncItems(items.filter(syncNeeded));
-$('export-ics').onclick = () => downloadIcs(items.filter(eligibleForCalendar));
+$('sync-calendar').onclick = () => {
+  $('export-menu').open = false;
+  syncItems(items.filter(syncNeeded));
+};
+$('export-ics').onclick = () => {
+  $('export-menu').open = false;
+  downloadIcs(items.filter(eligibleForCalendar));
+};
+document.addEventListener('click', event => {
+  if ($('export-menu').open && !event.target.closest('#export-menu')) $('export-menu').open = false;
+});
+// 알림 설정은 바꾸는 즉시 저장합니다.
+$('reminder-form').addEventListener('change', () => $('reminder-form').requestSubmit($('save-reminders')));
 for (let hour = 0; hour < 24; hour++) {
   const option = node('option', `${String(hour).padStart(2, '0')}:00`);
   option.value = hour;

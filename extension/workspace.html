@@ -134,20 +134,21 @@
             <div>
               <h1>캘린더</h1>
             </div>
-            <div class="heading-actions">
-              <button id="export-ics" class="secondary" title="Apple·Google·Outlook·삼성 캘린더에서 열 수 있는 파일">
-                캘린더 파일 받기</button
-              ><button id="sync-calendar" class="secondary">Google에 등록</button>
-            </div>
-          </div>
-          <div class="calendar-meta">
-            <span><i class="legend-task"></i>할 일 마감 <i class="legend-schedule"></i>참석 일정</span
-            ><a href="#settings" id="calendar-state">Google 연결 설정</a>
+            <details class="menu" id="export-menu">
+              <summary class="secondary">캘린더로 내보내기</summary>
+              <div class="menu-panel">
+                <button id="export-ics" class="menu-item">캘린더 파일 받기</button>
+                <p class="menu-note">Apple·삼성·Outlook 캘린더에서 열 수 있어요</p>
+                <button id="sync-calendar" class="menu-item">Google에 등록</button>
+                <a href="#settings" id="calendar-state" class="menu-note">Google 연결 설정</a>
+              </div>
+            </details>
           </div>
           <div class="calendar-toolbar">
             <button id="previous-month" class="secondary icon-button" aria-label="이전 달">‹</button>
             <h2 id="month-title"></h2>
-            <button id="next-month" class="secondary icon-button" aria-label="다음 달">›</button
+            <button id="next-month" class="secondary icon-button" aria-label="다음 달">›</button>
+            <span class="legend"><i class="legend-task"></i>할 일 <i class="legend-schedule"></i>일정</span
             ><button id="today" class="secondary">오늘</button>
           </div>
           <div class="calendar-layout">
@@ -164,7 +165,7 @@
             <div>
               <h1>공지 가져오기</h1>
             </div>
-            <ol class="flow-steps" aria-label="진행 단계">
+            <ol class="flow-steps" aria-label="진행 단계" hidden>
               <li id="step-input" class="current">1 가져오기</li>
               <li id="step-review">2 확인하기</li>
               <li>3 저장하기</li>
@@ -271,7 +272,7 @@
                   ><span>일정 시작 30분 전에도 알림</span><input id="event-reminder" type="checkbox" checked
                 /></label>
                 <div class="actions">
-                  <button class="primary">설정 저장</button
+                  <button class="primary" id="save-reminders" hidden>설정 저장</button
                   ><button id="test-notification" type="button" class="secondary">알림 확인</button>
                 </div>
               </form>
