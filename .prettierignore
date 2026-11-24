@@ -1,0 +1,9 @@
+node_modules/
+extension/vendor/
+public/vendor/
+demo/
+booth/
+docs/
+*.html
+*.css
+*.md
