@@ -22,7 +22,7 @@
 
 ### 바로 설치하기 (압축 파일)
 
-1. [dist/haezoom-ai-extension-3.1.0.zip](dist/haezoom-ai-extension-3.1.0.zip)을 내려받습니다. (파일 화면에서 오른쪽 위 다운로드 버튼, 또는 [Releases](../../releases)의 첨부 파일)
+1. [dist/haezoom-ai-extension-3.1.0.zip](dist/haezoom-ai-extension-3.1.0.zip)을 내려받습니다. (링크를 열고 오른쪽 위 다운로드 버튼)
 2. 압축을 풀면 `haezoom-ai-extension` 폴더가 나옵니다. 지우거나 옮기지 않을 위치에 둡니다.
 3. Chrome 주소창에 `chrome://extensions`를 열고 오른쪽 위 **개발자 모드**를 켭니다.
 4. **압축해제된 확장 프로그램을 로드합니다** → `haezoom-ai-extension` 폴더를 선택합니다.
