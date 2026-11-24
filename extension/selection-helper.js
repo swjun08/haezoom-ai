@@ -11,14 +11,21 @@
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent =
-    ':host{color-scheme:light}*{box-sizing:border-box}.chip{display:flex;align-items:center;gap:8px;padding:6px;background:#fff;color:#14171f;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 5px 24px #14171f20;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}.main{background:#14171f;color:white;padding:10px 14px;border-radius:10px;border:0;font:inherit;cursor:pointer;white-space:nowrap}.main:disabled{opacity:.5}.count{color:#6b7280;font-size:11px;padding:0 5px}.close{border:0;background:#f3f4f6;color:#14171f;border-radius:8px;width:30px;height:32px;font:18px sans-serif;cursor:pointer}button:focus-visible{outline:2px solid #2298ff;outline-offset:2px}.hint{position:absolute;top:100%;left:5px;margin-top:5px;background:#fff;padding:4px 8px;border-radius:5px;font-size:11px;color:#6b7280;white-space:nowrap}';
+    ':host{color-scheme:light}*{box-sizing:border-box}.chip{display:flex;align-items:center;gap:8px;padding:6px;background:#fff;color:#14171f;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 5px 24px #14171f20;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}.main{background:#14171f;color:white;padding:10px 14px;border-radius:10px;border:0;font:inherit;cursor:pointer;white-space:nowrap}.main:disabled{opacity:.5}.count{color:#6b7280;font-size:11px;padding:0 5px}.close{border:0;background:#f3f4f6;color:#14171f;border-radius:8px;width:30px;height:32px;font:18px sans-serif;cursor:pointer}button:focus-visible{outline:2px solid #2298ff;outline-offset:2px}.hint{position:absolute;top:100%;left:0;margin-top:6px;background:#fff;padding:5px 10px;border-radius:8px;font-size:12px;color:#9a3412;white-space:nowrap;box-shadow:0 4px 16px #14171f1a}.hint:empty{display:none}.main{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 14px 0 6px;font-weight:650;font-size:14px}.main .mark{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:7px;background:#fff;color:#14171f;font-weight:800;font-size:13px;letter-spacing:-.04em}.close{width:34px;height:34px;font-size:20px;background:transparent}.close:hover{background:#f3f4f6}.count{font-size:12px}';
   const chip = document.createElement('div');
   chip.className = 'chip';
   chip.setAttribute('role', 'group');
   chip.setAttribute('aria-label', '해줌 선택 문장 도우미');
   const main = document.createElement('button');
   main.className = 'main';
-  main.textContent = '해줌으로 정리 →';
+  const setMainLabel = label => {
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.textContent = 'h.';
+    mark.setAttribute('aria-hidden', 'true');
+    main.replaceChildren(mark, document.createTextNode(label));
+  };
+  setMainLabel('해줌으로 정리');
   main.type = 'button';
   const count = document.createElement('span');
   count.className = 'count';
@@ -29,7 +36,7 @@
   close.setAttribute('aria-label', '선택 도우미 닫기');
   const hint = document.createElement('span');
   hint.className = 'hint';
-  hint.textContent = '먼저 내용을 확인해요 · 자동 전송 없음';
+  hint.setAttribute('role', 'status');
   chip.append(main, count, close, hint);
   shadow.append(style, chip);
   document.documentElement.append(host);
@@ -379,7 +386,7 @@
     if (!rect.width && !rect.height) return hide();
     count.textContent = `${selectedText.length.toLocaleString()}자`;
     main.disabled = selectedText.length > 45000;
-    hint.textContent = main.disabled ? '45,000자 이내로 선택해 주세요' : '먼저 내용을 확인해요 · 자동 전송 없음';
+    hint.textContent = main.disabled ? '45,000자 이내로 선택해 주세요' : '';
     host.style.display = 'block';
     const width = host.getBoundingClientRect().width;
     host.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - width - 8))}px`;
@@ -422,7 +429,7 @@
       placeMenu();
     } finally {
       main.disabled = false;
-      main.textContent = '해줌으로 정리 →';
+      setMainLabel('해줌으로 정리');
     }
   };
   const dispose = () => {

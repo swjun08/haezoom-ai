@@ -19,6 +19,45 @@ const node = (tag, text, className) => {
   if (className) e.className = className;
   return e;
 };
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+/** 2026-11-27 → 11월 27일 (금) */
+function shortDate(iso, withYear = false) {
+  const d = new Date(iso + 'T12:00:00Z');
+  const text = `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEKDAYS[d.getUTCDay()]})`;
+  return withYear ? `${d.getUTCFullYear()}년 ${text}` : text;
+}
+const dayDiff = (from, to) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+/** 날짜를 읽기 쉬운 글과 남은 기간 표시로 */
+function dueInfo(item) {
+  const dates = calendarDates(item);
+  if (!dates) return null;
+  const today = koreanDate(),
+    otherYear = dates.start.slice(0, 4) !== today.slice(0, 4);
+  let label = shortDate(dates.start, otherYear);
+  if (dates.end !== dates.start)
+    label +=
+      ' – ' +
+      (dates.end.slice(0, 7) === dates.start.slice(0, 7) ? `${Number(dates.end.slice(8))}일` : shortDate(dates.end));
+  let chip = '',
+    tone = '';
+  if (!item.completed) {
+    const untilStart = dayDiff(today, dates.start);
+    if (dates.end < today) {
+      chip = `${dayDiff(dates.end, today)}일 지남`;
+      tone = 'overdue';
+    } else if (dates.start <= today) {
+      chip = item.kind === 'task' ? '오늘 마감' : dates.start === today ? '오늘' : '진행 중';
+      tone = 'today';
+    } else if (untilStart === 1) {
+      chip = '내일';
+      tone = 'soon';
+    } else if (untilStart <= 14) {
+      chip = `D-${untilStart}`;
+      tone = untilStart <= 3 ? 'soon' : '';
+    }
+  }
+  return { label, chip, tone, dates };
+}
 let items = [],
   draft = [],
   selected = new Set(),
@@ -133,7 +172,9 @@ function route() {
     settings: '연결 · 설정',
   }[target];
   document.querySelectorAll('.view').forEach(v => (v.hidden = v.id !== target));
-  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.hash === `#${target}`));
+  document
+    .querySelectorAll('nav a, .settings-link')
+    .forEach(a => a.classList.toggle('active', a.hash === `#${target}`));
   if (target === 'tasks') renderItems();
   if (hash.startsWith('item/')) {
     const item = items.find(x => x.id === decodeURIComponent(hash.slice(5)));
@@ -179,22 +220,36 @@ function renderHome() {
     .filter(x => x.kind === 'task' && x.confirmed)
     .sort((a, b) => (calendarDates(a)?.start || '9999').localeCompare(calendarDates(b)?.start || '9999'));
   const todayCount = dated.filter(x => calendarDates(x)?.start === today).length;
-  $('home-description').textContent = todayCount
-    ? `오늘 마감 ${todayCount}개`
-    : pending.length
-      ? '마감이 가까운 순서로 모았어요.'
-      : '새 공지를 가져오면 여기에 모아드려요.';
+  const overdueCount = dated.filter(x => calendarDates(x)?.start < today).length;
+  $('home-description').textContent = overdueCount
+    ? `기한 지난 일 ${overdueCount}개${todayCount ? ` · 오늘 마감 ${todayCount}개` : ''}`
+    : todayCount
+      ? `오늘 마감 ${todayCount}개`
+      : pending.length
+        ? '마감이 가까운 순서로 모았어요.'
+        : '새 공지를 가져오면 여기에 모아드려요.';
   $('home-review').replaceChildren();
   $('home-list').replaceChildren();
+  const upcoming = dated.filter(x => !calendarDates(x) || calendarDates(x).start > today);
   const groups = [
-    ['오늘까지', dated.filter(x => calendarDates(x)?.start === today)],
-    ['확인 필요', unknown],
-    ['기한이 지났어요', dated.filter(x => calendarDates(x)?.start < today)],
-    ['다음 할 일', dated.filter(x => !calendarDates(x) || calendarDates(x).start > today)],
+    ['기한이 지났어요', dated.filter(x => calendarDates(x)?.start < today), 'overdue'],
+    ['오늘까지', dated.filter(x => calendarDates(x)?.start === today), 'today'],
+    ['날짜를 확인해 주세요', unknown, 'review'],
+    ['다가오는 할 일', upcoming.slice(0, 5), ''],
   ];
-  for (const [name, list] of groups) {
+  for (const [name, list, tone] of groups) {
     if (!list.length) continue;
-    $('home-list').append(node('h3', name + ' · ' + list.length, 'priority-group'), ...list.map(x => card(x)));
+    const title = node('h3', undefined, 'priority-group ' + tone);
+    title.append(
+      node('span', name),
+      node('span', String(list === groups[3][1] ? upcoming.length : list.length), 'count'),
+    );
+    $('home-list').append(title, ...list.map(x => listCard(x)));
+  }
+  if (upcoming.length > 5) {
+    const more = node('a', `다가오는 할 일 ${upcoming.length - 5}개 더 보기`, 'more-link');
+    more.href = '#tasks';
+    $('home-list').append(more);
   }
   if (!dated.length && !unknown.length) {
     const empty = node('div', undefined, 'empty');
@@ -235,20 +290,20 @@ function renderHome() {
     const d = calendarDates(x);
     return d && selectedDay >= d.start && selectedDay <= d.end;
   });
-  $('home-agenda-title').textContent = Number(selectedDay.slice(5, 7)) + '월 ' + Number(selectedDay.slice(8)) + '일';
+  $('home-agenda-title').textContent = shortDate(selectedDay) + (selectedDay === today ? ' · 오늘' : '');
   $('home-events').replaceChildren(
     ...dayItems.map(x => {
       const b = button('', () => openItem(x), 'agenda-item');
       b.append(
         node('span', x.kind === 'task' ? '마감' : '일정', 'kind-tag ' + x.kind),
         node('strong', x.title),
-        node('small', x.time || '시간 지정 없음'),
+        node('small', x.time || (x.kind === 'task' ? '하루 종일' : '시간 미정')),
       );
       return b;
     }),
   );
-  if (!dayItems.length) $('home-events').append(node('p', '등록된 일정이 없어요.', 'muted tiny'));
-  $('home-events').append(button('이 날짜에 추가', () => openManual(selectedDay), 'quiet-button'));
+  if (!dayItems.length) $('home-events').append(node('p', '이 날은 비어 있어요.', 'muted tiny'));
+  $('home-events').append(button('+ 이 날짜에 추가', () => openManual(selectedDay), 'secondary add-on-day'));
 }
 function detailsText(item) {
   return [
@@ -424,7 +479,7 @@ function makeEditor(item, onSave) {
   };
   return form;
 }
-function card(item, isDraft = false) {
+function card(item, isDraft = false, { showKind = true } = {}) {
   const article = node('article', undefined, `task-card${item.completed ? ' done' : ''}`);
   article.dataset.id = item.id;
   const heading = node('div', undefined, 'row');
@@ -441,36 +496,41 @@ function card(item, isDraft = false) {
     label.append(checkbox);
     heading.append(label);
   }
-  heading.append(
-    node('h3', item.title),
-    node('span', item.kind === 'task' ? '할 일' : '일정', item.kind === 'task' ? 'kind-tag task' : 'kind-tag schedule'),
-  );
-  if (!isDraft)
+  heading.append(node('h3', item.title));
+  if (showKind)
     heading.append(
-      button(
-        item.confirmed ? '보기' : '확인하기',
-        () => openItem(item),
-        'open-item' + (!item.confirmed ? ' review-action' : ''),
+      node(
+        'span',
+        item.kind === 'task' ? '할 일' : '일정',
+        item.kind === 'task' ? 'kind-tag task' : 'kind-tag schedule',
       ),
     );
+  if (!isDraft) {
+    const open = button(
+      item.confirmed ? '' : '날짜 확인',
+      () => openItem(item),
+      'open-item' + (!item.confirmed ? ' review-action' : ''),
+    );
+    if (item.confirmed) open.setAttribute('aria-label', '보기');
+    heading.append(open);
+  }
   article.append(heading);
-  const dates = calendarDates(item),
-    today = koreanDate();
-  let dateText = item.date || '날짜 없음';
-  if (dates) dateText = dates.start + (dates.end !== dates.start ? ` ~ ${dates.end}` : '');
+  const due = dueInfo(item);
   const meta = node('div', undefined, 'item-meta');
   meta.append(
     node(
       'span',
-      dateText + (item.kind === 'schedule' && item.time ? ' · ' + item.time : ''),
-      'date-label' + (dates?.start < today && !item.completed ? ' overdue' : ''),
+      (due ? due.label : item.originalDate || item.date || '날짜 없음') +
+        (item.kind === 'schedule' && item.time ? ' · ' + item.time : ''),
+      'date-label' + (due?.tone === 'overdue' ? ' overdue' : ''),
     ),
   );
-  if (!item.confirmed) meta.append(node('span', '확인 필요', 'badge'));
+  if (due?.chip) meta.append(node('span', due.chip, 'due-chip ' + due.tone));
+  if (!item.confirmed) meta.append(node('span', '날짜 확인 필요', 'badge'));
   if (item.reminderEnabled === false) meta.append(node('span', '알림 끔', 'muted tiny'));
-  article.append(meta);
   const preview = item.notes || item.action || item.details;
-  if (preview) article.append(node('p', (item.notes ? '메모 · ' : '') + preview, 'item-preview'));
+  if (preview) meta.append(node('span', (item.notes ? '메모 · ' : '') + preview, 'item-preview'));
+  article.append(meta);
   const expansion = node('details', undefined, 'item-expansion');
   expansion.append(node('summary', '상세 · 수정'));
   const facts = node('dl', undefined, 'item-facts');
@@ -485,7 +545,6 @@ function card(item, isDraft = false) {
     if (value) {
       facts.append(node('dt', name), node('dd', value));
     }
-  if (facts.childElementCount) expansion.append(facts);
   const memoForm = node('form', undefined, 'item-memo');
   const memoLabel = node('label', '내 메모');
   const memo = node('textarea');
@@ -502,7 +561,6 @@ function card(item, isDraft = false) {
   memoState.setAttribute('role', 'status');
   memoActions.append(memoState, memoSave);
   memoForm.append(memoLabel, memoActions);
-  expansion.append(memoForm);
   memoForm.onsubmit = async event => {
     event.preventDefault();
     memoSave.disabled = true;
@@ -528,12 +586,12 @@ function card(item, isDraft = false) {
       memoSave.disabled = false;
     }
   };
+  let summary = null;
   if (item.documentSummary) {
-    const summary = node('details', undefined, 'document-summary');
+    summary = node('details', undefined, 'document-summary');
     summary.append(node('summary', '공지 전체 요약'), node('p', item.documentSummary));
-    expansion.append(summary);
   }
-  const evidence = node('details');
+  const evidence = node('details', undefined, 'evidence');
   evidence.append(
     node('summary', '원문 근거와 출처'),
     node('p', item.evidence || '직접 입력'),
@@ -546,8 +604,7 @@ function card(item, isDraft = false) {
     a.rel = 'noopener noreferrer';
     evidence.append(a);
   }
-  expansion.append(evidence);
-  const actions = node('div', undefined, 'actions');
+  const actions = node('div', undefined, 'actions item-actions');
   const editor = makeEditor(item, async patch => {
     if (isDraft) {
       Object.assign(item, patch, { needs_review: !patch.confirmed });
@@ -587,16 +644,21 @@ function card(item, isDraft = false) {
       ),
     );
   actions.append(
-    button('날짜·내용 확인', () => {
+    button(isDraft || !item.confirmed ? '날짜·내용 확인' : '내용 수정', () => {
       editor.hidden = !editor.hidden;
       if (!editor.hidden) editor.querySelector('input').focus();
     }),
   );
   if (!isDraft) {
+    if (eligibleForCalendar(item)) actions.append(button('캘린더 파일', () => downloadIcs([item])));
     if (eligibleForCalendar(item))
       actions.append(
         button(
-          item.calendarEventId ? (syncNeeded(item) ? '캘린더 업데이트' : '캘린더에 등록됨') : '캘린더 등록',
+          item.calendarEventId
+            ? syncNeeded(item)
+              ? 'Google 캘린더 업데이트'
+              : 'Google 캘린더에 등록됨'
+            : 'Google 캘린더 등록',
           async () => {
             if (!calendarConnected) {
               location.hash = 'settings';
@@ -607,45 +669,60 @@ function card(item, isDraft = false) {
           },
         ),
       );
-    if (eligibleForCalendar(item)) actions.append(button('캘린더 파일', () => downloadIcs([item])));
-    const more = node('details');
-    more.append(node('summary', '더 보기'));
-    const moreActions = node('div', undefined, 'actions');
+    const danger = [];
     if (item.calendarEventId)
-      moreActions.append(
-        button('Google 일정 삭제', async () => {
-          if (!(await ask('Google 일정 삭제', 'Google에 등록한 일정만 삭제합니다. 해줌의 할 일은 유지돼요.', '삭제')))
-            return;
-          items = await request('removeCalendarEvent', { id: item.id }, 45000);
-          renderAll();
-          notify('Google 일정을 삭제했어요.');
-        }),
+      danger.push(
+        button(
+          'Google 일정 삭제',
+          async () => {
+            if (!(await ask('Google 일정 삭제', 'Google에 등록한 일정만 삭제합니다. 해줌의 할 일은 유지돼요.', '삭제')))
+              return;
+            items = await request('removeCalendarEvent', { id: item.id }, 45000);
+            renderAll();
+            notify('Google 일정을 삭제했어요.');
+          },
+          'quiet-danger',
+        ),
       );
-    moreActions.append(
-      button('할 일 삭제', async () => {
-        if (
-          !(await ask(
-            '할 일을 삭제할까요?',
-            item.calendarEventId
-              ? '해줌 목록에서 삭제합니다. Google에 등록한 일정은 유지돼요.'
-              : '목록에서 이 항목을 삭제합니다.',
-            '삭제',
-          ))
-        )
-          return;
-        items = await request('deleteItem', { id: item.id });
-        $('item-dialog').close();
-        renderAll();
-        notify('할 일을 삭제했어요.');
-      }),
+    danger.push(
+      button(
+        '삭제',
+        async () => {
+          if (
+            !(await ask(
+              item.kind === 'task' ? '할 일을 삭제할까요?' : '일정을 삭제할까요?',
+              item.calendarEventId
+                ? '해줌 목록에서 삭제합니다. Google에 등록한 일정은 유지돼요.'
+                : '목록에서 이 항목을 삭제합니다.',
+              '삭제',
+            ))
+          )
+            return;
+          items = await request('deleteItem', { id: item.id });
+          $('item-dialog').close();
+          renderAll();
+          notify('삭제했어요.');
+        },
+        'quiet-danger',
+      ),
     );
-    more.append(moreActions);
-    expansion.append(actions, editor, more);
-    article.append(expansion);
-  } else {
-    expansion.append(actions, editor);
-    article.append(expansion);
+    const spacer = node('span', undefined, 'actions-spacer');
+    actions.append(spacer, ...danger);
   }
+  if (facts.childElementCount) expansion.append(facts);
+  expansion.append(actions, editor, memoForm);
+  if (summary) expansion.append(summary);
+  expansion.append(evidence);
+  article.append(expansion);
+  return article;
+}
+/** 목록 줄: 줄 아무 곳이나 눌러도 상세가 열립니다 */
+function listCard(item, options) {
+  const article = card(item, false, options);
+  article.classList.add('clickable');
+  article.onclick = event => {
+    if (!event.target.closest('button,a,input,textarea,select,summary,label,form')) openItem(item);
+  };
   return article;
 }
 function renderItems() {
@@ -682,7 +759,7 @@ function renderItems() {
       ? (a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')
       : (a, b) => (calendarDates(a)?.start || '9999').localeCompare(calendarDates(b)?.start || '9999'),
   );
-  $('task-list').replaceChildren(...visible.map(x => card(x)));
+  $('task-list').replaceChildren(...visible.map(x => listCard(x, { showKind: false })));
   if (!visible.length) {
     const empty = node('div', undefined, 'empty');
     empty.append(
@@ -756,10 +833,13 @@ function renderCalendar() {
       return d && date >= d.start && date <= d.end;
     })) {
       const b = button(
-        item.title,
+        '',
         () => openItem(item),
         `calendar-item ${item.kind}${item.completed ? ' done' : !item.confirmed ? ' unconfirmed' : ''}`,
       );
+      if (item.time && item.time.length <= 8 && date === calendarDates(item).start)
+        b.append(node('span', item.time, 'chip-time'));
+      b.append(node('span', item.title, 'chip-title'));
       b.title = `${item.title} · ${item.confirmed ? '확인 완료' : '확인 필요'}`;
       cell.append(b);
     }
@@ -795,6 +875,7 @@ function downloadIcs(list) {
   notify(`${count}개 항목을 캘린더 파일로 내려받았어요. 파일을 열면 캘린더 앱에 추가돼요.`);
 }
 function openItem(item) {
+  $('item-dialog-title').textContent = item.kind === 'task' ? '할 일' : '일정';
   $('item-detail').replaceChildren(card(item));
   $('item-detail').querySelector('.item-expansion').open = true;
   if (!item.confirmed) $('item-detail').querySelector('.edit-form').hidden = false;
@@ -819,13 +900,13 @@ function renderDay() {
       b.append(
         node('span', item.kind === 'task' ? '마감' : '일정', 'kind-tag ' + item.kind),
         node('strong', item.title),
-        node('small', item.time || '시간 지정 없음'),
+        node('small', item.time || (item.kind === 'task' ? '하루 종일' : '시간 미정')),
       );
       return b;
     }),
   );
-  if (!list.length) $('day-items').append(node('p', '등록된 할 일과 일정이 없어요.', 'muted tiny'));
-  $('day-items').append(button('이 날짜에 추가', () => openManual(selectedDay), 'secondary'));
+  if (!list.length) $('day-items').append(node('p', '이 날은 비어 있어요.', 'muted tiny'));
+  $('day-items').append(button('+ 이 날짜에 추가', () => openManual(selectedDay), 'secondary add-on-day'));
 }
 function renderAll() {
   renderHome();
