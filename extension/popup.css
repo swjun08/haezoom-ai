@@ -1,2 +1,161 @@
-html{background:#f4f5f7;border-radius:28px;overflow:hidden}.popup{width:344px;background:#f4f5f7;padding:7px;color:#1b1e26}.popup-card{border:1px solid #e7e9ef;border-radius:26px;background:white;overflow:hidden}.popup header{padding:22px 22px 18px}.popup .brand{font-size:18px;gap:10px}.popup .logo{width:35px;height:35px;border-radius:12px}.icon-button{display:grid;place-items:center;background:#f5f6f8;border-radius:50%;width:34px;height:34px;padding:8px}.icon-button img{width:18px;height:18px;opacity:.65}.popup main{padding:4px 18px 18px}.input-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:23px}.input-actions>button{display:flex;flex-direction:column;align-items:center;gap:10px;background:transparent;padding:4px 0;font-size:12px;font-weight:600;border-radius:15px}.action-circle{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:#f1f3f6;transition:background .15s,transform .15s}.action-circle img{width:26px;height:26px;opacity:.75}.action-circle.capture{background:#1b1e26}.action-circle.capture img{filter:invert(1);opacity:1}.input-actions>button:hover .action-circle{transform:translateY(-2px);background:#e8ebf0}.input-actions>button:hover .capture{background:#303540}.manage{display:flex;align-items:center;gap:12px;width:100%;border-radius:16px;background:#f3f5f8;font-size:13px;padding:15px}.manage img{width:20px;height:20px;opacity:.65}.manage span{flex:1;text-align:left}.manage img:last-child{width:16px}.button-settings{margin-top:16px;font-size:11px;color:#8a919d;padding:0 5px}.button-settings summary{list-style:none}.button-settings summary:after{content:'+';float:right}.button-settings[open] summary:after{content:'−'}.button-settings button{font-size:11px;padding:10px;border-radius:12px}.popup #status:empty{display:none}.popup #status:not(:empty){position:static;font-size:11px;padding:10px 12px;margin:12px 0 0;border-radius:12px;background:#f7f0e3;color:#806533;white-space:normal}
-html{background:transparent}.popup{background:transparent;padding:0}.popup-card{border:0;border-radius:24px;background:#fff}
+html {
+  background: #f4f5f7;
+  border-radius: 28px;
+  overflow: hidden;
+}
+.popup {
+  width: 344px;
+  background: #f4f5f7;
+  padding: 7px;
+  color: #1b1e26;
+}
+.popup-card {
+  border: 1px solid #e7e9ef;
+  border-radius: 26px;
+  background: white;
+  overflow: hidden;
+}
+.popup header {
+  padding: 22px 22px 18px;
+}
+.popup .brand {
+  font-size: 18px;
+  gap: 10px;
+}
+.popup .logo {
+  width: 35px;
+  height: 35px;
+  border-radius: 12px;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  background: #f5f6f8;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+}
+.icon-button img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.65;
+}
+.popup main {
+  padding: 4px 18px 18px;
+}
+.input-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 23px;
+}
+.input-actions > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 15px;
+}
+.action-circle {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f1f3f6;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.action-circle img {
+  width: 26px;
+  height: 26px;
+  opacity: 0.75;
+}
+.action-circle.capture {
+  background: #1b1e26;
+}
+.action-circle.capture img {
+  filter: invert(1);
+  opacity: 1;
+}
+.input-actions > button:hover .action-circle {
+  transform: translateY(-2px);
+  background: #e8ebf0;
+}
+.input-actions > button:hover .capture {
+  background: #303540;
+}
+.manage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border-radius: 16px;
+  background: #f3f5f8;
+  font-size: 13px;
+  padding: 15px;
+}
+.manage img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.65;
+}
+.manage span {
+  flex: 1;
+  text-align: left;
+}
+.manage img:last-child {
+  width: 16px;
+}
+.button-settings {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #8a919d;
+  padding: 0 5px;
+}
+.button-settings summary {
+  list-style: none;
+}
+.button-settings summary:after {
+  content: '+';
+  float: right;
+}
+.button-settings[open] summary:after {
+  content: '−';
+}
+.button-settings button {
+  font-size: 11px;
+  padding: 10px;
+  border-radius: 12px;
+}
+.popup #status:empty {
+  display: none;
+}
+.popup #status:not(:empty) {
+  position: static;
+  font-size: 11px;
+  padding: 10px 12px;
+  margin: 12px 0 0;
+  border-radius: 12px;
+  background: #f7f0e3;
+  color: #806533;
+  white-space: normal;
+}
+html {
+  background: transparent;
+}
+.popup {
+  background: transparent;
+  padding: 0;
+}
+.popup-card {
+  border: 0;
+  border-radius: 24px;
+  background: #fff;
+}
