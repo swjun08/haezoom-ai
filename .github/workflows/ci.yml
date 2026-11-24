@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: 단위 테스트 · 정적 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+      - run: npm run format:check
+
+  browser:
+    name: 확장 프로그램 브라우저 테스트
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      UI_OUTPUT: ${{ runner.temp }}/ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/browser.mjs
+      - run: node tests/notes-browser.mjs
+      - run: node tests/global.mjs
+      - run: node tests/offscreen.mjs
+      - run: node tests/pdf.mjs
