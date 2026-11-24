@@ -1054,3 +1054,8 @@ body[data-view] .workspace {
 #settings legend {
   padding: 0;
 }
+#settings .settings-panel button.secondary {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
