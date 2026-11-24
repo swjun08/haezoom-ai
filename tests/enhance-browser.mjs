@@ -35,6 +35,7 @@ try {
     });
   });
   await page.reload();
+  await page.click('#export-menu summary');
   await page.locator('#export-ics').filter({ hasText: '· 2' }).waitFor();
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-ics')]);
   const ics = await readFile(await download.path(), 'utf8');

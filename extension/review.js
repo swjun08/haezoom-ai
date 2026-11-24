@@ -599,7 +599,9 @@
 .header-link{margin-left:auto;margin-right:6px;background:#fff!important;box-shadow:inset 0 0 0 1px #e3e6eb;font-size:13px;min-height:34px;padding:0 12px;color:#3d4450;border-radius:9px}
 .close{width:38px;height:38px;font-size:26px;font-weight:400}
 .close:hover{background:#f1f3f5!important}
-.review main>h2{font-size:20px;margin:0}
+.review main>h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.columns.text-only label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.review main{padding-top:6px}
 .review-tabs{align-self:flex-start;padding:3px;gap:2px}
 .review-tabs button{flex:none;font-size:13px;padding:7px 16px;min-height:32px}
 .review-tabs button:disabled{opacity:.5}
