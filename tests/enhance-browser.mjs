@@ -56,6 +56,13 @@ try {
     const { haezoomItems } = await chrome.storage.local.get('haezoomItems');
     return haezoomItems.some(item => item.title === '상담 신청서 제출' && item.date === '2026-12-04' && item.confirmed);
   });
+  // 할 일·일정을 함께 보는 '전체'가 기본, 직접 추가 창에 Google 캘린더 알약
+  await page.goto(`chrome-extension://${id}/workspace.html#tasks`);
+  await page.locator('#status-filter').selectOption('all');
+  assert.equal(await page.locator('#kind-filters [aria-pressed=true]').textContent(), '전체');
+  assert.equal(await page.locator('#task-list .task-card').count(), 3, '할 일과 일정이 함께 보임');
+  await page.click('#new-item');
+  assert.equal(await page.locator('#manual-dialog .gcal-pill').getAttribute('aria-pressed'), 'false');
   assert.deepEqual(errors, []);
   console.log('PASS: .ics download contains only confirmed items with KST times; date hint chip fills and confirms an ambiguous date.');
 } finally {

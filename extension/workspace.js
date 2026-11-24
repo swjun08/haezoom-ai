@@ -71,7 +71,8 @@ let items = [],
   filePreview = null;
 let month = koreanDate().slice(0, 7),
   selectedDay = koreanDate(),
-  kindFilter = 'task';
+  kindFilter = 'all',
+  autoSync = false;
 let notificationTimer;
 function notify(text, persistent = false) {
   clearTimeout(notificationTimer);
@@ -476,7 +477,7 @@ function makeEditor(item, onSave) {
   };
   return form;
 }
-function card(item, isDraft = false, { showKind = true, hideTodayChip = false } = {}) {
+function card(item, isDraft = false, { showKind = true, hideTodayChip = false, kindInMeta = false } = {}) {
   const article = node('article', undefined, `task-card${item.completed ? ' done' : ''}`);
   article.dataset.id = item.id;
   const heading = node('div', undefined, 'row');
@@ -514,6 +515,7 @@ function card(item, isDraft = false, { showKind = true, hideTodayChip = false } 
   article.append(heading);
   const due = dueInfo(item);
   const meta = node('div', undefined, 'item-meta');
+  if (kindInMeta) meta.append(node('span', item.kind === 'task' ? '할 일' : '일정', 'kind-text ' + item.kind));
   meta.append(
     node(
       'span',
@@ -723,7 +725,7 @@ function listCard(item, options) {
 }
 function renderItems() {
   $('nav-count').textContent = items.filter(x => !x.completed).length;
-  const pending = items.filter(x => !x.completed && x.kind === kindFilter),
+  const pending = items.filter(x => !x.completed && (kindFilter === 'all' || x.kind === kindFilter)),
     today = koreanDate();
   $('task-stats').hidden = true;
   $('task-stats').replaceChildren(
@@ -743,7 +745,7 @@ function renderItems() {
   const query = $('search').value.trim().toLowerCase();
   const visible = items.filter(
     x =>
-      x.kind === kindFilter &&
+      (kindFilter === 'all' || x.kind === kindFilter) &&
       (!query ||
         `${x.title} ${detailsText(x)} ${x.notes || ''} ${x.documentSummary || ''}`.toLowerCase().includes(query)) &&
       (filter === 'all' ||
@@ -756,7 +758,9 @@ function renderItems() {
       ? (a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')
       : (a, b) => (calendarDates(a)?.start || '9999').localeCompare(calendarDates(b)?.start || '9999'),
   );
-  $('task-list').replaceChildren(...visible.map(x => listCard(x, { showKind: false })));
+  $('task-list').replaceChildren(
+    ...visible.map(x => listCard(x, { showKind: false, kindInMeta: kindFilter === 'all' })),
+  );
   if (!visible.length) {
     const empty = node('div', undefined, 'empty');
     empty.append(
@@ -765,7 +769,7 @@ function renderItems() {
         'h3',
         items.length
           ? '여기에 표시할 항목이 없어요'
-          : kindFilter === 'task'
+          : kindFilter !== 'schedule'
             ? '아직 가져온 할 일이 없어요'
             : '아직 등록한 일정이 없어요',
       ),
@@ -903,11 +907,40 @@ function renderDay() {
   );
   $('day-items').append(button('+ 이 날짜에 추가', () => openManual(selectedDay), 'secondary add-on-day'));
 }
+function savedMessage(base, calendar) {
+  if (!calendar) return base + '.';
+  if (calendar.synced && !calendar.failed) return `${base} · Google 캘린더에도 등록했어요.`;
+  if (calendar.failed) return `${base}. Google 등록은 실패했어요: ${calendar.error || '다시 시도해 주세요.'}`;
+  return `${base}. 날짜가 정해지면 Google 캘린더에 등록돼요.`;
+}
+function renderAutoSync() {
+  document.querySelectorAll('.gcal-pill').forEach(b => b.setAttribute('aria-pressed', String(autoSync)));
+  $('auto-sync').checked = autoSync;
+  $('auto-sync-row').hidden = !calendarConnected;
+}
+async function setAutoSync(enabled) {
+  document.querySelectorAll('.gcal-pill').forEach(b => (b.disabled = true));
+  try {
+    if (enabled && !calendarConnected) notify('Google 로그인 창에서 계정을 선택해 주세요.', true);
+    const result = await request('setCalendarAutoSync', { enabled }, 180000);
+    autoSync = result.enabled;
+    calendarConnected = result.connected;
+    if (enabled) notify('저장할 때 Google 캘린더에도 등록해요.');
+  } catch (e) {
+    notify(e.message, true);
+  } finally {
+    document.querySelectorAll('.gcal-pill').forEach(b => (b.disabled = false));
+    renderAll();
+  }
+}
+document.querySelectorAll('.gcal-pill').forEach(b => (b.onclick = () => setAutoSync(!autoSync)));
+$('auto-sync').onchange = () => setAutoSync($('auto-sync').checked);
 function renderAll() {
   renderHome();
   renderItems();
   renderCalendar();
   $('connect-calendar').textContent = calendarConnected ? '연결 해제' : 'Google 캘린더 연결';
+  renderAutoSync();
   $('google-state').textContent = calendarConnected ? '연결됨' : '';
   $('connection-label').textContent = calendarConnected ? 'Google 연결됨 · 설정' : '연결 · 설정';
 }
@@ -923,7 +956,7 @@ document.querySelectorAll('#kind-filters button').forEach(
   b =>
     (b.onclick = () => {
       kindFilter = b.dataset.kind;
-      $('manual-kind').value = kindFilter;
+      $('manual-kind').value = kindFilter === 'schedule' ? 'schedule' : 'task';
       document.querySelectorAll('#kind-filters button').forEach(x => x.setAttribute('aria-pressed', x === b));
       renderItems();
     }),
@@ -1027,7 +1060,9 @@ $('save').onclick = async () => {
     filter = 'pending';
     setFilter();
     renderHome();
-    notify(result.added ? `${result.added}개 항목을 저장했어요.` : '이미 저장된 항목이에요.');
+    notify(
+      result.added ? savedMessage(`${result.added}개 항목을 저장했어요`, result.calendar) : '이미 저장된 항목이에요.',
+    );
   } catch (e) {
     notify(e.message, true);
   } finally {
@@ -1096,17 +1131,13 @@ $('manual').onsubmit = async event => {
   try {
     const result = await request('addItems', { items: [item] });
     items = result.items;
-    kindFilter = item.kind;
-    document
-      .querySelectorAll('#kind-filters button')
-      .forEach(x => x.setAttribute('aria-pressed', x.dataset.kind === kindFilter));
     event.target.reset();
-    $('manual-kind').value = kindFilter;
+    $('manual-kind').value = item.kind;
     $('manual-dialog').close();
     filter = 'pending';
     setFilter();
     renderAll();
-    notify('할 일을 추가했어요.');
+    notify(savedMessage(item.kind === 'task' ? '할 일을 추가했어요' : '일정을 추가했어요', result.calendar));
   } catch (e) {
     notify(e.message, true);
   } finally {
@@ -1124,6 +1155,7 @@ $('connect-calendar').onclick = async () => {
         return;
       await request('calendarDisconnect');
       calendarConnected = false;
+      autoSync = false;
       notify('연결을 해제했어요.');
     } else {
       notify('Google 로그인 창에서 계정과 일정 권한을 확인해 주세요.', true);
@@ -1333,9 +1365,10 @@ request('getItems')
     route();
   })
   .catch(e => notify(e.message, true));
-request('calendarStatus')
-  .then(result => {
-    calendarConnected = result.connected;
+Promise.all([request('calendarStatus'), request('getCalendarAutoSync')])
+  .then(([status, sync]) => {
+    calendarConnected = status.connected;
+    autoSync = sync.enabled && status.connected;
     renderAll();
   })
   .catch(() => {});

@@ -71,8 +71,11 @@ const supportedMessages = new Set([
   'saveAnalysis',
   'previewPdf',
   'openPdfUpload',
+  'getCalendarAutoSync',
+  'setCalendarAutoSync',
   ...extensionMessages,
 ]);
+const AUTO_SYNC_KEY = 'calendarAutoSync';
 
 function inStorageQueue(work) {
   const result = storageQueue.then(work);
@@ -231,6 +234,44 @@ async function syncCalendarItems(itemIds) {
   outcome.items = await inStorageQueue(storedItems);
   return outcome;
 }
+/** 'Google 캘린더' 알약이 켜져 있으면 새로 저장한 항목을 바로 등록합니다. 날짜를 확인하지 않은 항목은 건너뜁니다. */
+async function autoSyncAdded(ids) {
+  const settings = await chrome.storage.local.get([AUTO_SYNC_KEY, 'calendarEnabled']);
+  if (!settings[AUTO_SYNC_KEY] || !settings.calendarEnabled || !ids.length) return null;
+  try {
+    const outcome = await calendarWork(() => syncCalendarItems(ids));
+    return {
+      synced: outcome.synced,
+      skipped: outcome.skipped,
+      failed: outcome.failed.length,
+      error: outcome.failed[0]?.error,
+    };
+  } catch (error) {
+    return { synced: 0, skipped: 0, failed: ids.length, error: calendarErrorMessage(error) };
+  }
+}
+async function autoSyncUpdated(id) {
+  const settings = await chrome.storage.local.get([AUTO_SYNC_KEY, 'calendarEnabled']);
+  if (!settings[AUTO_SYNC_KEY] || !settings.calendarEnabled) return;
+  const item = (await inStorageQueue(storedItems)).find(x => x.id === id);
+  if (!item || !eligibleForCalendar(item)) return;
+  if (item.calendarEventId && item.calendarFingerprint === calendarFingerprint(item)) return;
+  calendarWork(() => syncCalendarItems([id])).catch(() => {});
+}
+async function saveAndSync(incoming) {
+  const result = await inStorageQueue(async () => {
+    incoming.forEach(validateItem);
+    const before = await storedItems();
+    const known = new Set(before.map(x => x.id));
+    const merged = mergeItems(before, incoming);
+    await chrome.storage.local.set({ [ITEMS_KEY]: merged.items });
+    merged.addedIds = incoming.filter(x => !known.has(x.id) && merged.items.some(i => i.id === x.id)).map(x => x.id);
+    return merged;
+  });
+  const calendar = await autoSyncAdded(result.addedIds);
+  if (calendar) result.items = await inStorageQueue(storedItems);
+  return { items: result.items, added: result.added, calendar };
+}
 function enableGlobal() {
   const work = globalQueue.then(async () => {
     if (!(await chrome.permissions.contains({ origins: globalOrigins }))) return false;
@@ -360,12 +401,22 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
             item.needs_review = false;
           }
         }
-      return inStorageQueue(async () => {
-        incoming.forEach(validateItem);
-        const result = mergeItems(await storedItems(), incoming);
-        await chrome.storage.local.set({ [ITEMS_KEY]: result.items });
-        return result;
-      });
+      return saveAndSync(incoming);
+    }
+    if (message.type === 'getCalendarAutoSync') {
+      const settings = await chrome.storage.local.get([AUTO_SYNC_KEY, 'calendarEnabled']);
+      return { enabled: Boolean(settings[AUTO_SYNC_KEY] && settings.calendarEnabled) };
+    }
+    if (message.type === 'setCalendarAutoSync') {
+      const enabled = message.payload?.enabled === true;
+      if (enabled) {
+        await acquireCalendarToken(true);
+        await chrome.storage.local.set({ calendarEnabled: true, [AUTO_SYNC_KEY]: true });
+      } else await chrome.storage.local.set({ [AUTO_SYNC_KEY]: false });
+      return {
+        enabled,
+        connected: enabled || (await chrome.storage.local.get('calendarEnabled')).calendarEnabled === true,
+      };
     }
     if (extensionMessages.has(message.type)) {
       requireWorkspace(sender);
@@ -373,12 +424,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       if (message.type === 'addItems') {
         const incoming = message.payload?.items;
         if (!Array.isArray(incoming) || incoming.length > 100) throw new Error('저장할 항목 목록이 올바르지 않습니다.');
-        incoming.forEach(validateItem);
-        return inStorageQueue(async () => {
-          const result = mergeItems(await storedItems(), incoming);
-          await chrome.storage.local.set({ [ITEMS_KEY]: result.items });
-          return result;
-        });
+        return saveAndSync(incoming);
       }
       if (message.type === 'updateItem') {
         const { id, patch, revision } = message.payload || {};
@@ -409,6 +455,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
           if (item.confirmed && (item.date || item.kind === 'schedule') && !calendarDates(item))
             throw new Error('정확한 날짜를 입력한 뒤 확인 완료해 주세요.');
           await chrome.storage.local.set({ [ITEMS_KEY]: items });
+          return items;
+        }).then(items => {
+          autoSyncUpdated(id).catch(() => {});
           return items;
         });
       }
@@ -478,7 +527,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
           } catch {}
           if (token) await forgetToken(token);
           await chrome.storage.session.remove(WEB_TOKEN_KEY);
-          await chrome.storage.local.set({ calendarEnabled: false, calendarAuth: null });
+          await chrome.storage.local.set({ calendarEnabled: false, calendarAuth: null, [AUTO_SYNC_KEY]: false });
           await chrome.identity.clearAllCachedAuthTokens();
           if (token) {
             try {
