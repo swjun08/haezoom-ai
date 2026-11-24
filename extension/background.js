@@ -567,6 +567,73 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 
+// ── 우클릭 메뉴 · 단축키: 읽던 페이지에서 한 번에 정리 ──
+const PAGE_URL = /^(https?|file):/;
+async function showSelectionInTab(tab, text) {
+  if (!tab?.id || !PAGE_URL.test(tab.url || '')) throw new Error('공지 웹페이지에서 문장을 선택해 주세요.');
+  const clean = typeof text === 'string' ? text.trim() : '';
+  if (!clean || clean.length > 45000) throw new Error('분석할 내용을 45,000자 이내로 선택해 주세요.');
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['date-hints.js', 'review.js'] });
+  const result = await chrome.tabs.sendMessage(tab.id, { type: 'showSelectionReview', payload: { text: clean } });
+  if (!result?.ok) throw new Error(result?.error || '내용 확인 창을 열지 못했어요.');
+}
+async function captureInTab(tab) {
+  if (!tab?.id || !PAGE_URL.test(tab.url || '')) throw new Error('웹페이지 또는 PDF 파일에서 캡쳐해 주세요.');
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ['date-hints.js', 'review.js', 'capture.js'],
+  });
+  const result = await chrome.tabs.sendMessage(tab.id, { type: 'startCapture' });
+  if (!result?.ok) throw new Error(result?.error || '캡쳐를 시작하지 못했어요.');
+}
+async function openHelperMenu(tab) {
+  if (!tab?.id || !PAGE_URL.test(tab.url || '')) throw new Error('이 페이지에서는 해줌을 열 수 없어요.');
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['selection-helper.js'] });
+  await chrome.tabs.sendMessage(tab.id, { type: 'showHelperMenu', anchor: 'toolbar' });
+}
+function reportShortcutError(error) {
+  chrome.notifications
+    .create(`haezoom-error-${Date.now()}`, {
+      type: 'basic',
+      iconUrl: 'icon.png',
+      title: '해줌 AI',
+      message: error?.message || '이 페이지에서는 해줌을 쓸 수 없어요. 일반 웹페이지에서 다시 시도해 주세요.',
+    })
+    .catch(console.error);
+}
+function setupContextMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: 'haezoom-selection', title: '해줌으로 정리', contexts: ['selection'] });
+    chrome.contextMenus.create({
+      id: 'haezoom-capture',
+      title: '해줌 · 화면 캡처로 가져오기',
+      contexts: ['page', 'image'],
+    });
+  });
+}
+chrome.runtime.onInstalled.addListener(setupContextMenus);
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  const work =
+    info.menuItemId === 'haezoom-selection' ? showSelectionInTab(tab, info.selectionText) : captureInTab(tab);
+  work.catch(reportShortcutError);
+});
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  try {
+    const target = tab || (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+    if (command === 'capture') return await captureInTab(target);
+    if (command !== 'open-helper') return;
+    if (!target?.id || !PAGE_URL.test(target.url || '')) throw new Error('이 페이지에서는 해줌을 열 수 없어요.');
+    const [{ result: selected } = {}] = await chrome.scripting.executeScript({
+      target: { tabId: target.id },
+      func: () => String(getSelection() || '').trim(),
+    });
+    if (selected) await showSelectionInTab(target, selected);
+    else await openHelperMenu(target);
+  } catch (error) {
+    reportShortcutError(error);
+  }
+});
+
 chrome.action.onClicked.addListener(async tab => {
   try {
     if (!tab.id || !/^(https?|file):/.test(tab.url || '')) throw new Error();
