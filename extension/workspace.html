@@ -105,7 +105,8 @@
           <div class="collection-panel">
             <div class="collection-toolbar">
               <div id="kind-filters" class="segmented" aria-label="항목 종류">
-                <button data-kind="task" aria-pressed="true">할 일</button
+                <button data-kind="all" aria-pressed="true">전체</button
+                ><button data-kind="task" aria-pressed="false">할 일</button
                 ><button data-kind="schedule" aria-pressed="false">일정</button>
               </div>
               <div class="list-tools">
@@ -225,6 +226,7 @@
                 <div id="draft-list"></div>
                 <div class="save-area">
                   <p id="save-hint">필요한 항목을 선택해 저장하세요.</p>
+                  <button type="button" class="pill-toggle gcal-pill" aria-pressed="false">Google 캘린더</button>
                   <button id="save" class="primary" disabled>선택한 항목 저장</button>
                 </div>
               </div>
@@ -267,6 +269,9 @@
               <h2>Google 캘린더</h2>
               <p id="google-state"></p>
               <button id="connect-calendar" class="secondary">Google 캘린더 연결</button>
+              <label class="toggle-row" id="auto-sync-row" hidden
+                ><span>저장할 때 Google 캘린더에도 등록</span><input id="auto-sync" type="checkbox" role="switch"
+              /></label>
               <code id="extension-id" hidden></code>
             </section>
             <section class="panel settings-panel">
@@ -317,15 +322,18 @@
             maxlength="500" /></label
         ><label>날짜<input id="manual-date" aria-label="새 할 일 마감일" type="date" /></label
         ><label
-          >메모 <span class="muted">선택</span
-          ><textarea
+          >메모 ><textarea
             id="manual-notes"
             aria-label="새 항목 메모"
             maxlength="5000"
             rows="3"
             placeholder="기억할 내용이나 준비 상황을 적어 주세요."
-          ></textarea></label
-        ><button class="primary">추가</button>
+          ></textarea>
+        </label>
+        <div class="form-footer">
+          <button type="button" class="pill-toggle gcal-pill" aria-pressed="false">Google 캘린더</button
+          ><button class="primary">추가</button>
+        </div>
       </form>
     </dialog>
     <dialog id="item-dialog">

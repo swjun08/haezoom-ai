@@ -184,7 +184,29 @@
       const footer = create('div', '', 'result-footer'),
         count = create('span'),
         save = create('button', '확인하고 저장', 'primary');
-      footer.append(count, save);
+      // 저장 버튼 옆 'Google 캘린더' 알약: 켜 두면 저장할 때 Google 캘린더에도 등록합니다(설정은 기억됨).
+      const gcal = create('button', 'Google 캘린더', 'pill-toggle');
+      gcal.setAttribute('aria-pressed', 'false');
+      chrome.runtime
+        .sendMessage({ type: 'getCalendarAutoSync' })
+        .then(r => gcal.setAttribute('aria-pressed', String(Boolean(r?.ok && r.data.enabled))))
+        .catch(() => {});
+      gcal.onclick = async () => {
+        const next = gcal.getAttribute('aria-pressed') !== 'true';
+        gcal.disabled = true;
+        if (next) status.textContent = 'Google 로그인 창이 열리면 계정을 선택해 주세요.';
+        try {
+          const r = await chrome.runtime.sendMessage({ type: 'setCalendarAutoSync', payload: { enabled: next } });
+          if (!r?.ok) throw new Error(r?.error || 'Google 캘린더를 연결하지 못했어요.');
+          gcal.setAttribute('aria-pressed', String(r.data.enabled));
+          status.textContent = '';
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          gcal.disabled = false;
+        }
+      };
+      footer.append(gcal, count, save);
       analysisOutput.replaceChildren(layout, footer);
       const normalize = value => {
         if (typeof value !== 'string') return '';
@@ -375,6 +397,18 @@
           success.append(
             create('span', '✓', 'success-icon'),
             create('h2', response.data.added ? '저장했어요' : '이미 저장한 내용이에요'),
+            ...(response.data.calendar
+              ? [
+                  create(
+                    'p',
+                    response.data.calendar.failed
+                      ? 'Google 캘린더 등록은 실패했어요. ' + (response.data.calendar.error || '')
+                      : response.data.calendar.synced
+                        ? 'Google 캘린더에도 등록했어요.'
+                        : '날짜가 정해지면 Google 캘린더에 등록돼요.',
+                  ),
+                ]
+              : []),
           );
           const actions = create('div', '', 'actions');
           const done = create('button', '이 페이지 계속 보기', 'primary');
@@ -579,7 +613,11 @@
     body.append(heading, tabs, columns, analysisOutput, status);
     const resultStyle = create('style');
     resultStyle.textContent = `
-.review{height:min(700px,calc(100dvh - 32px))}.review main{gap:14px}.review-tabs{flex-shrink:0}.result-layout{display:grid;grid-template-columns:230px minmax(0,1fr);flex:1;min-height:0;border:1px solid #e5e8ed;border-radius:18px;overflow:hidden}.result-list-pane{min-width:0;min-height:0;display:flex;flex-direction:column;background:#f7f8fa;padding:16px 12px;border-right:1px solid #e5e8ed}.result-list-pane h3{font-size:12px;color:#747d8b;font-weight:600;margin:0 8px 12px}.result-list{overflow:auto;min-height:0;flex:1}.result-list-row{display:flex;gap:8px;align-items:flex-start;padding:10px 8px;margin-bottom:5px;border:1px solid transparent;border-radius:12px}.result-list-row.active{background:#fff;border-color:#dbe1e8;box-shadow:0 2px 4px #1c233008}.result-list-row>input{flex-shrink:0;margin:5px 0 0}.result-item{padding:0!important;background:transparent!important;text-align:left;min-width:0;flex:1;font-weight:400}.result-item strong{display:block;font-size:14px;line-height:1.55;margin:4px 0 5px;overflow-wrap:anywhere}.result-item small{font-size:11px;color:#7b8491}.result-item .uncertain{color:#98702b}.result-kind{font-size:10px;padding:2px 6px;border-radius:5px;display:inline-block;color:#4770a3;background:#edf3fc}.result-kind.schedule{color:#407e69;background:#eaf4ef}.result-detail{padding:20px 22px;overflow:auto;min-height:0;min-width:0}.result-title{display:block;width:100%;font:650 18px/1.5 -apple-system,"Apple SD Gothic Neo",sans-serif;border:0;background:transparent;color:#171b23;padding:0 0 12px;border-radius:0}.result-title:focus{outline:0!important;border-bottom:1px solid #98b6d4}.result-meta{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}.kind-switch{display:flex;background:#f0f2f5;padding:3px;border-radius:99px;gap:2px}.kind-switch button{font-size:12px;font-weight:500;padding:7px 15px;border-radius:99px;background:transparent;color:#7a8290}.kind-switch [aria-pressed=true]{background:white;color:#1b1f27;box-shadow:0 1px 4px #0001}.result-date{font-size:11px;font-weight:500;color:#7a8290;display:grid;gap:4px}.result-date input{font:12px -apple-system,sans-serif;padding:7px 10px;border:1px solid #e2e6ec;border-radius:8px;background:#fff;color:#242b35;min-height:33px}.result-detail .date-notice{background:#fff7e9;color:#8b6728;padding:8px 10px;border-radius:8px;font-size:12px;margin:-4px 0 16px}.date-hints{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.date-hint{font:600 12px -apple-system,"Apple SD Gothic Neo",sans-serif;padding:6px 11px;border-radius:99px;background:#fff;color:#5c4314;border:1px solid #ecd3a3}.date-hint:hover{background:#fff1d6}.result-detail .result-facts{grid-template-columns:60px minmax(0,1fr);gap:9px 12px;margin:0 0 20px}.result-detail .result-facts dd{font-size:14px;line-height:1.7}.result-memo{border-top:1px solid #edf0f4;padding-top:16px}.result-memo textarea{height:78px;min-height:78px;resize:vertical;max-height:180px;background:#f8f9fb;border-color:#e5e8ed}.result-evidence{margin-top:14px!important}.result-evidence p,.document-overview p{font-size:12px;line-height:1.7;margin-top:8px}.document-overview{padding:12px 8px 0;border-top:1px solid #e4e8ee;max-height:35%;overflow:auto;flex-shrink:0}.document-overview summary{font-size:11px}.result-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px;flex-shrink:0}.result-footer>span{font-size:12px;color:#697482}.result-footer .primary{min-height:42px;padding:11px 26px;font-size:14px}.save-success{display:flex;flex:1;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:14px;padding:24px}.success-icon{display:grid;place-items:center;background:#eaf5ef;color:#267a56;font-size:28px;width:58px;height:58px;border-radius:50%}.save-success .actions{margin-top:12px}@media(max-width:640px){.result-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.result-list-pane{padding:9px;border-right:0;border-bottom:1px solid #e5e8ed}.result-list-pane h3,.document-overview{display:none}.result-list{display:flex;gap:6px;overflow:auto;max-height:120px}.result-list-row{min-width:180px;max-width:220px;margin:0;flex-shrink:0;padding:8px}.result-detail{padding:16px}.result-meta{gap:12px}.result-footer>span{font-size:11px}.result-footer .primary{font-size:12px;padding:10px 18px}}
+.review{height:min(700px,calc(100dvh - 32px))}.review main{gap:14px}.review-tabs{flex-shrink:0}.result-layout{display:grid;grid-template-columns:230px minmax(0,1fr);flex:1;min-height:0;border:1px solid #e5e8ed;border-radius:18px;overflow:hidden}.result-list-pane{min-width:0;min-height:0;display:flex;flex-direction:column;background:#f7f8fa;padding:16px 12px;border-right:1px solid #e5e8ed}.result-list-pane h3{font-size:12px;color:#747d8b;font-weight:600;margin:0 8px 12px}.result-list{overflow:auto;min-height:0;flex:1}.result-list-row{display:flex;gap:8px;align-items:flex-start;padding:10px 8px;margin-bottom:5px;border:1px solid transparent;border-radius:12px}.result-list-row.active{background:#fff;border-color:#dbe1e8;box-shadow:0 2px 4px #1c233008}.result-list-row>input{flex-shrink:0;margin:5px 0 0}.result-item{padding:0!important;background:transparent!important;text-align:left;min-width:0;flex:1;font-weight:400}.result-item strong{display:block;font-size:14px;line-height:1.55;margin:4px 0 5px;overflow-wrap:anywhere}.result-item small{font-size:11px;color:#7b8491}.result-item .uncertain{color:#98702b}.result-kind{font-size:10px;padding:2px 6px;border-radius:5px;display:inline-block;color:#4770a3;background:#edf3fc}.result-kind.schedule{color:#407e69;background:#eaf4ef}.result-detail{padding:20px 22px;overflow:auto;min-height:0;min-width:0}.result-title{display:block;width:100%;font:650 18px/1.5 -apple-system,"Apple SD Gothic Neo",sans-serif;border:0;background:transparent;color:#171b23;padding:0 0 12px;border-radius:0}.result-title:focus{outline:0!important;border-bottom:1px solid #98b6d4}.result-meta{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}.kind-switch{display:flex;background:#f0f2f5;padding:3px;border-radius:99px;gap:2px}.kind-switch button{font-size:12px;font-weight:500;padding:7px 15px;border-radius:99px;background:transparent;color:#7a8290}.kind-switch [aria-pressed=true]{background:white;color:#1b1f27;box-shadow:0 1px 4px #0001}.result-date{font-size:11px;font-weight:500;color:#7a8290;display:grid;gap:4px}.result-date input{font:12px -apple-system,sans-serif;padding:7px 10px;border:1px solid #e2e6ec;border-radius:8px;background:#fff;color:#242b35;min-height:33px}.result-detail .date-notice{background:#fff7e9;color:#8b6728;padding:8px 10px;border-radius:8px;font-size:12px;margin:-4px 0 16px}.date-hints{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.date-hint{font:600 12px -apple-system,"Apple SD Gothic Neo",sans-serif;padding:6px 11px;border-radius:99px;background:#fff;color:#5c4314;border:1px solid #ecd3a3}.date-hint:hover{background:#fff1d6}.result-detail .result-facts{grid-template-columns:60px minmax(0,1fr);gap:9px 12px;margin:0 0 20px}.result-detail .result-facts dd{font-size:14px;line-height:1.7}.result-memo{border-top:1px solid #edf0f4;padding-top:16px}.result-memo textarea{height:78px;min-height:78px;resize:vertical;max-height:180px;background:#f8f9fb;border-color:#e5e8ed}.result-evidence{margin-top:14px!important}.result-evidence p,.document-overview p{font-size:12px;line-height:1.7;margin-top:8px}.document-overview{padding:12px 8px 0;border-top:1px solid #e4e8ee;max-height:35%;overflow:auto;flex-shrink:0}.document-overview summary{font-size:11px}.pill-toggle{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px 0 10px;border-radius:99px;background:#fff;color:#69717e;box-shadow:inset 0 0 0 1px #e5e8ed;font-size:13px;font-weight:600;margin-right:auto}
+.pill-toggle::before{content:'';width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1.6px #c5cad2;flex-shrink:0}
+.pill-toggle[aria-pressed=true]{color:#14171f;background:#eef5ff;box-shadow:inset 0 0 0 1px #b9d2f2}
+.pill-toggle[aria-pressed=true]::before{box-shadow:none;background:#2f62a8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
+.result-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px;flex-shrink:0}.result-footer>span{font-size:12px;color:#697482}.result-footer .primary{min-height:42px;padding:11px 26px;font-size:14px}.save-success{display:flex;flex:1;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:14px;padding:24px}.success-icon{display:grid;place-items:center;background:#eaf5ef;color:#267a56;font-size:28px;width:58px;height:58px;border-radius:50%}.save-success .actions{margin-top:12px}@media(max-width:640px){.result-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.result-list-pane{padding:9px;border-right:0;border-bottom:1px solid #e5e8ed}.result-list-pane h3,.document-overview{display:none}.result-list{display:flex;gap:6px;overflow:auto;max-height:120px}.result-list-row{min-width:180px;max-width:220px;margin:0;flex-shrink:0;padding:8px}.result-detail{padding:16px}.result-meta{gap:12px}.result-footer>span{font-size:11px}.result-footer .primary{font-size:12px;padding:10px 18px}}
 `;
     shadow.append(resultStyle);
     const mediaStyle = create('style');
